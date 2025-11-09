@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}{{ canister.label }} - Gas Gauge{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/" class="btn btn-sm btn-secondary">&larr; Back to Dashboard</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1>{{ canister.label }}</h1>
+        <p class="text-muted">{{ canister.canister_type.name }}</p>
+    </div>
+    <div class="col-md-4 text-end">
+        {% if latest_weighing %}
+        <div class="percentage-display status-{{ status_class }}">
+            {{ "%.0f"|format(latest_weighing.remaining_percentage) }}%
+        </div>
+        <p class="text-muted">{{ latest_weighing.remaining_gas }}g / {{ canister.canister_type.gas_capacity }}g</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mb-4">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addWeighingModal">
+        Add Weighing
+    </button>
+    {% if canister.status == "active" %}
+    <form method="POST" action="/canister/{{ canister.id }}/mark-depleted" style="display: inline;">
+        <button type="submit" class="btn btn-warning" onclick="return confirm('Mark this canister as depleted?')">
+            Mark as Depleted
+        </button>
+    </form>
+    {% else %}
+    <form method="POST" action="/canister/{{ canister.id }}/reactivate" style="display: inline;">
+        <button type="submit" class="btn btn-success">
+            Reactivate
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+{% if weighings %}
+<!-- Charts -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="chart-container">
+            <canvas id="gasOverTimeChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Weighing History Table -->
+<h3>Weighing History</h3>
+<table class="table table-striped weighing-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Weight (g)</th>
+            <th>Remaining Gas (g)</th>
+            <th>Remaining (%)</th>
+            <th>Consumption (%)</th>
+            <th>Comment</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for weighing in weighings %}
+        <tr>
+            <td>{{ weighing.recorded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ weighing.weight }}</td>
+            <td>{{ weighing.remaining_gas }}</td>
+            <td>{{ "%.1f"|format(weighing.remaining_percentage) }}%</td>
+            <td>{{ "%.1f"|format(weighing.consumption_percentage) }}%</td>
+            <td>{{ weighing.comment or '-' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-info">
+    No weighings recorded yet. Click "Add Weighing" to get started.
+</div>
+{% endif %}
+
+<!-- Add Weighing Modal -->
+<div class="modal fade" id="addWeighingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Weighing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/canister/{{ canister.id }}/add-weighing">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="weight" class="form-label">Weight (grams)</label>
+                        <input type="number" class="form-control" id="weight" name="weight" required min="1">
+                        <small class="text-muted">Full weight: {{ canister.canister_type.full_weight }}g</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">Comment (optional)</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Weighing</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/charts.js"></script>
+<script>
+    // Create gas over time chart
+    const chartData = {
+        labels: [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}],
+        datasets: [{
+            label: 'Remaining Gas (g)',
+            data: [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}],
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    };
+
+    createLineChart('gasOverTimeChart', chartData, 'Gas Remaining Over Time');
+</script>
+{% endblock %}
