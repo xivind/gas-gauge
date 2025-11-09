@@ -108,8 +108,11 @@ Implemented in `routers/views.py::get_status_class()`
 
 ### Logging
 
-All logs output to stdout/stderr for Docker visibility:
-- Configured in `logger.py`
+Unified logging configuration for both FastAPI/uvicorn and application logs:
+- Format: `%(asctime)s - %(levelname)s - %(message)s`
+- Date format: `%d-%b-%y %H:%M:%S`
+- Configured in `logger.py` and `uvicorn_log_config.ini`
+- All logs output to stdout for Docker visibility
 - View with: `docker logs -f gas-gauge`
 - Logs: startup, requests, weighing additions, errors
 
