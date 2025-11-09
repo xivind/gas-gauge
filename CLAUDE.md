@@ -15,23 +15,46 @@ Gas Gauge is a web application to track remaining gas in canisters for camp stov
 
 ## Development Commands
 
-### Running the App
+### Deployment
 
-**With Docker (recommended):**
+**Using deploy.sh script (recommended):**
+```bash
+./deploy.sh
+```
+
+The deploy.sh script handles complete deployment lifecycle:
+- Stops and removes existing container
+- Removes old image
+- Builds fresh image
+- Creates container with persistent data volume
+- Database stored in `~/code/container_data` (persists across rebuilds)
+
+**Manual Docker commands:**
 ```bash
 # Build
 docker build -t gas-gauge .
 
-# Run
-docker run -d -p 8000:8000 -v $(pwd)/data:/app/data --name gas-gauge gas-gauge
+# Run (with data persistence)
+mkdir -p ~/code/container_data
+docker run -d \
+  --name=gas-gauge \
+  -e TZ=Europe/Stockholm \
+  -v ~/code/container_data:/app/data \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  gas-gauge
 
 # View logs
 docker logs -f gas-gauge
+# or
+docker container logs -f gas-gauge
 
 # Stop/Start
 docker stop gas-gauge
 docker start gas-gauge
 ```
+
+### Running the App
 
 **Without Docker:**
 ```bash
@@ -119,8 +142,10 @@ Unified logging configuration for both FastAPI/uvicorn and application logs:
 ## Database Management
 
 ### Location
-- Development: `./data/gas_gauge.db`
-- Docker: Persisted via volume mount `-v $(pwd)/data:/app/data`
+- Development (local): `./data/gas_gauge.db`
+- Production (Docker): `~/code/container_data/gas_gauge.db`
+  - Persisted via volume mount `-v ~/code/container_data:/app/data`
+  - Survives container rebuilds and updates
 
 ### Initialization
 - Tables created automatically on first run
@@ -128,6 +153,10 @@ Unified logging configuration for both FastAPI/uvicorn and application logs:
 
 ### Backup
 ```bash
+# Production database
+cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
+
+# Development database
 cp -r ./data ./data-backup-$(date +%Y%m%d)
 ```
 

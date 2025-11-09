@@ -18,7 +18,28 @@ A web application to track remaining gas in canisters for camp stoves.
 
 ## Quick Start
 
-### Using Docker
+### Using Docker (Recommended)
+
+The easiest way to deploy is using the provided `deploy.sh` script:
+
+1. **Deploy (first time or updates):**
+   ```bash
+   ./deploy.sh
+   ```
+
+   This script will:
+   - Stop and remove existing container (if any)
+   - Remove old image
+   - Build fresh image
+   - Create container with data persistence
+   - Database persists in `~/code/container_data`
+
+2. **Open your browser:**
+   Navigate to `http://localhost:8000`
+
+### Manual Docker Commands
+
+If you prefer manual control:
 
 1. **Build the image:**
    ```bash
@@ -27,16 +48,22 @@ A web application to track remaining gas in canisters for camp stoves.
 
 2. **Run the container:**
    ```bash
-   docker run -d -p 8000:8000 -v $(pwd)/data:/app/data --name gas-gauge gas-gauge
+   mkdir -p ~/code/container_data
+   docker run -d \
+     --name=gas-gauge \
+     -e TZ=Europe/Stockholm \
+     -v ~/code/container_data:/app/data \
+     --restart unless-stopped \
+     -p 8000:8000 \
+     gas-gauge
    ```
-
-3. **Open your browser:**
-   Navigate to `http://localhost:8000`
 
 ### View Logs
 
 ```bash
 docker logs -f gas-gauge
+# or
+docker container logs -f gas-gauge
 ```
 
 ### Stop/Start
@@ -46,19 +73,14 @@ docker stop gas-gauge
 docker start gas-gauge
 ```
 
-### Remove Container
+## Database Persistence
+
+Your database is stored in `~/code/container_data/gas_gauge.db` and persists across container rebuilds.
+
+### Backup
 
 ```bash
-docker stop gas-gauge
-docker rm gas-gauge
-```
-
-## Database Backup
-
-Your data is stored in `./data/gas_gauge.db`. To backup:
-
-```bash
-cp -r ./data ./data-backup-$(date +%Y%m%d)
+cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
 ```
 
 ## Development
