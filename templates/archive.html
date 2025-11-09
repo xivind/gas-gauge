@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Archive - Gas Gauge{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Depleted Canisters Archive</h1>
+    <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if canisters %}
+<div class="row">
+    {% for canister_data in canisters %}
+    <div class="col-md-4 mb-4">
+        <div class="card canister-card card-depleted"
+             onclick="window.location.href='/canister/{{ canister_data.canister.id }}'">
+            <div class="card-body">
+                <h5 class="card-title">{{ canister_data.canister.label }}</h5>
+                <p class="card-text text-muted">{{ canister_data.canister.canister_type.name }}</p>
+
+                {% if canister_data.latest_weighing %}
+                <div class="text-muted">
+                    <p class="mb-1">Final weight: {{ canister_data.latest_weighing.weight }}g</p>
+                    <p class="mb-1">
+                        <small>
+                            Depleted on: {{ canister_data.latest_weighing.recorded_at.strftime('%Y-%m-%d') }}
+                        </small>
+                    </p>
+                </div>
+                {% endif %}
+
+                <p class="card-text">
+                    <small class="text-muted">
+                        Total weighings: {{ canister_data.weighing_count }}
+                    </small>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    No depleted canisters in archive.
+</div>
+{% endif %}
+{% endblock %}

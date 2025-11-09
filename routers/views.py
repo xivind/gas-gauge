@@ -98,3 +98,29 @@ def reactivate_canister(canister_id: int):
     canister.status = "active"
     canister.save()
     return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
+
+@router.get("/archive", response_class=HTMLResponse)
+def archive(request: Request):
+    """Archive page showing depleted canisters"""
+    canisters = Canister.select().where(Canister.status == "depleted")
+
+    canister_data = []
+    for canister in canisters:
+        latest_weighing = (Weighing
+                          .select()
+                          .where(Weighing.canister == canister)
+                          .order_by(Weighing.recorded_at.desc())
+                          .first())
+
+        weighing_count = Weighing.select().where(Weighing.canister == canister).count()
+
+        canister_data.append({
+            "canister": canister,
+            "latest_weighing": latest_weighing,
+            "weighing_count": weighing_count
+        })
+
+    return templates.TemplateResponse("archive.html", {
+        "request": request,
+        "canisters": canister_data
+    })
