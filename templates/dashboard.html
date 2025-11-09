@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Gas Gauge{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Active Canisters</h1>
+    <div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCanisterModal">
+            Add New Canister
+        </button>
+        <a href="/archive" class="btn btn-secondary">View Archive</a>
+    </div>
+</div>
+
+{% if canisters %}
+<!-- Overview Chart -->
+<div class="chart-container mb-4">
+    <canvas id="overviewChart"></canvas>
+</div>
+
+<!-- Canister Cards -->
+<div class="row">
+    {% for canister_data in canisters %}
+    <div class="col-md-4 mb-4">
+        <div class="card canister-card card-status-{{ canister_data.status_class }}"
+             onclick="window.location.href='/canister/{{ canister_data.canister.id }}'">
+            <div class="card-body">
+                <h5 class="card-title">{{ canister_data.canister.label }}</h5>
+                <p class="card-text text-muted">{{ canister_data.canister.canister_type.name }}</p>
+
+                {% if canister_data.latest_weighing %}
+                <div class="percentage-display status-{{ canister_data.status_class }}">
+                    {{ "%.0f"|format(canister_data.latest_weighing.remaining_percentage) }}%
+                </div>
+                <p class="card-text">
+                    <small class="text-muted">
+                        Last weighed: {{ canister_data.latest_weighing.recorded_at.strftime('%Y-%m-%d') }}
+                    </small>
+                </p>
+                {% else %}
+                <p class="card-text text-muted">No weighings yet</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    No active canisters. Click "Add New Canister" to get started.
+</div>
+{% endif %}
+
+<!-- Add Canister Modal -->
+<div class="modal fade" id="addCanisterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Canister</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/canister/create">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="label" class="form-label">Canister Label</label>
+                        <input type="text" class="form-control" id="label" name="label" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="canister_type_id" class="form-label">Canister Type</label>
+                        <select class="form-select" id="canister_type_id" name="canister_type_id" required>
+                            {% for ct in canister_types %}
+                            <option value="{{ ct.id }}">{{ ct.name }} ({{ ct.gas_capacity }}g capacity)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Canister</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/charts.js"></script>
+<script>
+    // Initialize TomSelect for canister type dropdown
+    new TomSelect('#canister_type_id', {
+        placeholder: 'Select canister type...',
+    });
+
+    // Create overview chart
+    const chartData = {
+        labels: [{% for cd in canisters %}'{{ cd.canister.label }}',{% endfor %}],
+        datasets: [{
+            label: 'Remaining Gas (%)',
+            data: [{% for cd in canisters %}{{ cd.latest_weighing.remaining_percentage if cd.latest_weighing else 0 }},{% endfor %}],
+            backgroundColor: [{% for cd in canisters %}
+                '{% if cd.status_class == "high" %}rgba(40, 167, 69, 0.7){% elif cd.status_class == "medium" %}rgba(255, 193, 7, 0.7){% else %}rgba(220, 53, 69, 0.7){% endif %}',
+            {% endfor %}]
+        }]
+    };
+
+    createBarChart('overviewChart', chartData, 'Active Canisters Overview');
+</script>
+{% endblock %}
