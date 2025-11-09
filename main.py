@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import init_db
 from logger import setup_logging
-from routers import canister_types, canisters
+from routers import canister_types, canisters, weighings
 
 # Setup logging
 setup_logging()
@@ -15,3 +15,4 @@ init_db()
 # Include routers
 app.include_router(canister_types.router)
 app.include_router(canisters.router)
+app.include_router(weighings.router)
