@@ -124,3 +124,32 @@ def archive(request: Request):
         "request": request,
         "canisters": canister_data
     })
+
+@router.get("/admin/types", response_class=HTMLResponse)
+def admin_types(request: Request):
+    """Admin page for managing canister types"""
+    canister_types = CanisterType.select()
+
+    return templates.TemplateResponse("admin/types.html", {
+        "request": request,
+        "canister_types": canister_types
+    })
+
+@router.post("/admin/types/create")
+def create_type_form(
+    name: str = Form(...),
+    full_weight: int = Form(...),
+    empty_weight: int = Form(...)
+):
+    """Create canister type from form submission"""
+    CanisterType.create(name=name, full_weight=full_weight, empty_weight=empty_weight)
+    return RedirectResponse(url="/admin/types", status_code=303)
+
+@router.post("/admin/types/{type_id}/delete")
+def delete_type_form(type_id: int):
+    """Delete canister type"""
+    ct = CanisterType.get_by_id(type_id)
+    # Prevent deletion of built-in types
+    if ct.name not in ['Coleman 240g', 'Coleman 450g']:
+        ct.delete_instance()
+    return RedirectResponse(url="/admin/types", status_code=303)
