@@ -1,10 +1,5 @@
 import pytest
-from models import CanisterType, Canister, Weighing
-
-@pytest.fixture
-def canister():
-    ct = CanisterType.create(name="Coleman 240g", full_weight=361, empty_weight=122)
-    return Canister.create(label="Test Canister", canister_type=ct, status="active")
+from models import Weighing
 
 def test_create_weighing(canister, client):
     response = client.post("/api/weighings", json={
