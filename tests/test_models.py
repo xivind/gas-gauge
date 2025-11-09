@@ -41,3 +41,4 @@ def test_weighing_remaining_gas(setup_db):
     )
     assert weighing.remaining_gas == 202  # 324 - 122
     assert weighing.remaining_percentage == pytest.approx(84.5, 0.1)  # 202/239 * 100
+    assert weighing.consumption_percentage == pytest.approx(15.5, 0.1)  # 100 - 84.5
