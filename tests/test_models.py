@@ -1,21 +1,8 @@
 import pytest
-from peewee import SqliteDatabase
 from models import CanisterType, Canister, Weighing
 from datetime import datetime
 
-# Use in-memory database for tests
-test_db = SqliteDatabase(':memory:')
-
-@pytest.fixture
-def setup_db():
-    test_db.bind([CanisterType, Canister, Weighing])
-    test_db.connect()
-    test_db.create_tables([CanisterType, Canister, Weighing])
-    yield
-    test_db.drop_tables([CanisterType, Canister, Weighing])
-    test_db.close()
-
-def test_canister_type_gas_capacity(setup_db):
+def test_canister_type_gas_capacity():
     canister_type = CanisterType.create(
         name="Coleman 240g",
         full_weight=361,
@@ -23,7 +10,7 @@ def test_canister_type_gas_capacity(setup_db):
     )
     assert canister_type.gas_capacity == 239
 
-def test_weighing_remaining_gas(setup_db):
+def test_weighing_remaining_gas():
     canister_type = CanisterType.create(
         name="Coleman 240g",
         full_weight=361,
