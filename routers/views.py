@@ -2,9 +2,18 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from models import Canister, CanisterType, Weighing
+import time
+import uuid
+from datetime import datetime
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter()
+
+def generate_unique_id():
+    """Generate a random and unique ID"""
+    unique_id_part1 = uuid.uuid4()
+    unique_id_part2 = time.time()
+    return f'{str(unique_id_part1)[:6]}{str(unique_id_part2)[-4:]}'
 
 def get_status_class(percentage):
     """Get CSS class for percentage"""
@@ -17,8 +26,9 @@ def get_status_class(percentage):
 
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
-    """Dashboard showing active canisters"""
-    canisters = Canister.select().where(Canister.status == "active")
+    """Dashboard showing all canisters with toggle for depleted"""
+    # Get all canisters (both active and depleted)
+    canisters = Canister.select()
     canister_types = CanisterType.select()
 
     canister_data = []
@@ -36,13 +46,21 @@ def dashboard(request: Request):
         canister_data.append({
             "canister": canister,
             "latest_weighing": latest_weighing,
-            "status_class": status_class
+            "status_class": status_class,
+            "is_depleted": canister.status == "depleted"
         })
+
+    # Sort canisters: active first, then depleted
+    canister_data.sort(key=lambda x: (x["is_depleted"], x["canister"].label))
+
+    # Generate suggested label using unique ID
+    suggested_label = f"GC-{generate_unique_id()}"
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "canisters": canister_data,
-        "canister_types": canister_types
+        "canister_types": canister_types,
+        "suggested_label": suggested_label
     })
 
 @router.post("/canister/create")
@@ -78,9 +96,21 @@ def canister_detail(request: Request, canister_id: int):
     })
 
 @router.post("/canister/{canister_id}/add-weighing")
-def add_weighing_form(canister_id: int, weight: int = Form(...), comment: str = Form(None)):
+def add_weighing_form(
+    canister_id: int,
+    weight: int = Form(...),
+    recorded_at: str = Form(...),
+    comment: str = Form(None)
+):
     """Add weighing from form submission"""
-    Weighing.create(canister_id=canister_id, weight=weight, comment=comment)
+    # Parse date string (format: YYYY-MM-DD)
+    recorded_datetime = datetime.strptime(recorded_at, "%Y-%m-%d")
+    Weighing.create(
+        canister_id=canister_id,
+        weight=weight,
+        recorded_at=recorded_datetime,
+        comment=comment
+    )
     return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
 
 @router.post("/canister/{canister_id}/mark-depleted")
@@ -99,31 +129,29 @@ def reactivate_canister(canister_id: int):
     canister.save()
     return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
 
-@router.get("/archive", response_class=HTMLResponse)
-def archive(request: Request):
-    """Archive page showing depleted canisters"""
-    canisters = Canister.select().where(Canister.status == "depleted")
+@router.post("/canister/{canister_id}/delete")
+def delete_canister(canister_id: int):
+    """Delete canister and all its weighings"""
+    try:
+        canister = Canister.get_by_id(canister_id)
+        # Delete all weighings first
+        Weighing.delete().where(Weighing.canister == canister).execute()
+        # Delete the canister
+        canister.delete_instance()
+    except Canister.DoesNotExist:
+        pass
+    return RedirectResponse(url="/", status_code=303)
 
-    canister_data = []
-    for canister in canisters:
-        latest_weighing = (Weighing
-                          .select()
-                          .where(Weighing.canister == canister)
-                          .order_by(Weighing.recorded_at.desc())
-                          .first())
-
-        weighing_count = Weighing.select().where(Weighing.canister == canister).count()
-
-        canister_data.append({
-            "canister": canister,
-            "latest_weighing": latest_weighing,
-            "weighing_count": weighing_count
-        })
-
-    return templates.TemplateResponse("archive.html", {
-        "request": request,
-        "canisters": canister_data
-    })
+@router.post("/weighing/{weighing_id}/delete")
+def delete_weighing(weighing_id: int):
+    """Delete a weighing record"""
+    try:
+        weighing = Weighing.get_by_id(weighing_id)
+        canister_id = weighing.canister.id
+        weighing.delete_instance()
+        return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
+    except Weighing.DoesNotExist:
+        return RedirectResponse(url="/", status_code=303)
 
 @router.get("/admin/types", response_class=HTMLResponse)
 def admin_types(request: Request):

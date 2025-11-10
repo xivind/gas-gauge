@@ -3,13 +3,16 @@
 {% block title %}Dashboard - Gas Gauge{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Active Canisters</h1>
-    <div>
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>Canisters</h1>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCanisterModal">
             Add New Canister
         </button>
-        <a href="/archive" class="btn btn-secondary">View Archive</a>
+    </div>
+    <div class="form-check form-switch mt-2">
+        <input class="form-check-input" type="checkbox" id="showDepletedToggle">
+        <label class="form-check-label" for="showDepletedToggle"><strong>Show Depleted</strong></label>
     </div>
 </div>
 
@@ -22,11 +25,17 @@
 <!-- Canister Cards -->
 <div class="row">
     {% for canister_data in canisters %}
-    <div class="col-md-4 mb-4">
-        <div class="card canister-card card-status-{{ canister_data.status_class }}"
+    <div class="col-md-4 mb-4 canister-card-wrapper {% if canister_data.is_depleted %}depleted-canister{% endif %}"
+         data-depleted="{{ 'true' if canister_data.is_depleted else 'false' }}">
+        <div class="card canister-card {% if canister_data.is_depleted %}card-depleted{% else %}card-status-{{ canister_data.status_class }}{% endif %}"
              onclick="window.location.href='/canister/{{ canister_data.canister.id }}'">
             <div class="card-body">
-                <h5 class="card-title">{{ canister_data.canister.label }}</h5>
+                <h5 class="card-title">
+                    {{ canister_data.canister.label }}
+                    {% if canister_data.is_depleted %}
+                    <span class="badge bg-secondary ms-2">Depleted</span>
+                    {% endif %}
+                </h5>
                 <p class="card-text text-muted">{{ canister_data.canister.canister_type.name }}</p>
 
                 {% if canister_data.latest_weighing %}
@@ -64,7 +73,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="label" class="form-label">Canister Label</label>
-                        <input type="text" class="form-control" id="label" name="label" required>
+                        <input type="text" class="form-control" id="label" name="label" value="{{ suggested_label }}" required>
                     </div>
                     <div class="mb-3">
                         <label for="canister_type_id" class="form-label">Canister Type</label>
@@ -93,15 +102,31 @@
         placeholder: 'Select canister type...',
     });
 
-    // Create overview chart
+    // Toggle depleted canisters visibility
+    const toggleCheckbox = document.getElementById('showDepletedToggle');
+    const depletedCanisters = document.querySelectorAll('.depleted-canister');
+
+    // Hide depleted canisters by default
+    depletedCanisters.forEach(canister => {
+        canister.style.display = 'none';
+    });
+
+    // Toggle visibility when checkbox changes
+    toggleCheckbox.addEventListener('change', function() {
+        depletedCanisters.forEach(canister => {
+            canister.style.display = this.checked ? '' : 'none';
+        });
+    });
+
+    // Create overview chart (only active canisters)
     const chartData = {
-        labels: [{% for cd in canisters %}'{{ cd.canister.label }}',{% endfor %}],
+        labels: [{% for cd in canisters %}{% if not cd.is_depleted %}'{{ cd.canister.label }}',{% endif %}{% endfor %}],
         datasets: [{
             label: 'Remaining Gas (%)',
-            data: [{% for cd in canisters %}{{ cd.latest_weighing.remaining_percentage if cd.latest_weighing else 0 }},{% endfor %}],
-            backgroundColor: [{% for cd in canisters %}
+            data: [{% for cd in canisters %}{% if not cd.is_depleted %}{{ cd.latest_weighing.remaining_percentage if cd.latest_weighing else 0 }},{% endif %}{% endfor %}],
+            backgroundColor: [{% for cd in canisters %}{% if not cd.is_depleted %}
                 '{% if cd.status_class == "high" %}rgba(40, 167, 69, 0.7){% elif cd.status_class == "medium" %}rgba(255, 193, 7, 0.7){% else %}rgba(220, 53, 69, 0.7){% endif %}',
-            {% endfor %}]
+            {% endif %}{% endfor %}]
         }]
     };
 

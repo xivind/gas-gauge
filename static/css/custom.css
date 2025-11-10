@@ -1,3 +1,8 @@
+/* Navbar styling */
+.navbar-nav .nav-link {
+    font-size: 1.1rem;
+}
+
 /* Canister card color coding */
 .canister-card {
     transition: transform 0.2s;

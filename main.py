@@ -29,4 +29,9 @@ app.include_router(views.router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_config="uvicorn_log_config.ini"
+    )

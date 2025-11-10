@@ -62,10 +62,10 @@ docker start gas-gauge
 pip install -r requirements.txt
 
 # Run with hot reload
-uvicorn main:app --reload
+uvicorn main:app --reload --log-config uvicorn_log_config.ini
 
 # Run for production
-uvicorn main:app --host 0.0.0.0 --port 8000
+uvicorn main:app --host 0.0.0.0 --port 8000 --log-config uvicorn_log_config.ini
 ```
 
 ### Testing
@@ -107,18 +107,19 @@ Three main models with computed properties:
 - `routers/canister_types.py`: API for managing canister types
 - `routers/canisters.py`: API for canister CRUD
 - `routers/weighings.py`: API for recording weighings
-- `routers/views.py`: HTML views (dashboard, detail, archive, admin)
+- `routers/views.py`: HTML views (dashboard, detail, admin) with deletion routes
 
 ### Frontend Organization
 
-- `templates/base.html`: Base template with Bootstrap, Chart.js, TomSelect
-- `templates/dashboard.html`: Active canisters with overview chart
-- `templates/canister_detail.html`: Individual canister with history and charts
-- `templates/archive.html`: Depleted canisters
+- `templates/base.html`: Base template with Bootstrap, Chart.js, TomSelect, navbar with logo
+- `templates/dashboard.html`: All canisters with "Show Depleted" toggle and overview chart
+- `templates/canister_detail.html`: Individual canister with history, charts, and deletion
 - `templates/admin/types.html`: Manage canister types
-- `static/css/custom.css`: Color-coded status indicators
+- `static/css/custom.css`: Color-coded status indicators and navbar styling
 - `static/js/charts.js`: Chart.js helper functions
 - `static/js/app.js`: Form handling and utilities
+- `static/gas_gauge.png`: Transparent logo image (1024x1024)
+- `static/favicon.ico`: Browser favicon
 
 ### Color Coding Logic
 
@@ -135,9 +136,73 @@ Unified logging configuration for both FastAPI/uvicorn and application logs:
 - Format: `%(asctime)s - %(levelname)s - %(message)s`
 - Date format: `%d-%b-%y %H:%M:%S`
 - Configured in `logger.py` and `uvicorn_log_config.ini`
+- All uvicorn loggers (root, uvicorn, uvicorn.access, uvicorn.error) use same format
 - All logs output to stdout for Docker visibility
 - View with: `docker logs -f gas-gauge`
 - Logs: startup, requests, weighing additions, errors
+
+**Important:** Always run uvicorn with `--log-config uvicorn_log_config.ini` for consistent formatting.
+
+## Key Features
+
+### Show Depleted Toggle
+
+Dashboard displays all canisters with a "Show Depleted" toggle (off by default):
+- Toggle implemented as Bootstrap form switch below main heading
+- JavaScript hides depleted canisters by default
+- Depleted canisters always sort to the end when visible
+- No page reload required - pure client-side show/hide
+- Chart data excludes depleted canisters
+
+**Implementation:**
+- `templates/dashboard.html`: Form switch and JavaScript toggle logic
+- `routers/views.py::dashboard()`: Fetches all canisters, marks depleted status
+- Sorting: `canister_data.sort(key=lambda x: (x["is_depleted"], x["canister"].label))`
+
+### Deletion Functionality
+
+**Delete Canisters:**
+- Available on canister detail page
+- Cascade delete: removes all associated weighing records first
+- Confirmation dialog warns about permanent data loss
+- Route: `POST /canister/{canister_id}/delete`
+- Redirects to dashboard after deletion
+
+**Delete Weighing Records:**
+- Each weighing row has individual delete button
+- Confirmation dialog for each deletion
+- Route: `POST /weighing/{weighing_id}/delete`
+- Redirects back to canister detail page
+
+**Implementation:**
+- `routers/views.py`: `delete_canister()` and `delete_weighing()` routes
+- `templates/canister_detail.html`: Delete buttons with onclick confirmations
+
+### UUID-Based ID Generation
+
+Canister labels use robust unique ID generation instead of sequential numbers:
+- Format: `GC-{uuid[:6]}{timestamp[-4:]}`
+- Example: `GC-a3f8e52468`
+- Combines UUID randomness with timestamp uniqueness
+- Pre-filled in "Add Canister" form as suggested label
+- User can override if desired
+
+**Implementation:**
+- `routers/views.py::generate_unique_id()`: ID generation function
+- `routers/views.py::dashboard()`: Passes suggested_label to template
+
+### UI/UX Improvements
+
+**Navbar:**
+- Dark theme with large transparent logo (70px height)
+- Vertically centered logo and navigation links
+- Increased font size for better readability (1.1rem)
+- Logo and favicon use transparent PNG and ICO files
+
+**Consistency:**
+- All "Back to Dashboard" buttons use same styling (btn btn-secondary)
+- Color-coded status indicators throughout (green/yellow/red)
+- Standardized form layouts and button positions
 
 ## Database Management
 
@@ -165,10 +230,12 @@ cp -r ./data ./data-backup-$(date +%Y%m%d)
 1. **Single-user per instance**: No authentication, simpler deployment
 2. **SQLite**: Lightweight, file-based, easy backup
 3. **Computed properties**: Percentages calculated on-the-fly from model methods
-4. **No soft deletes**: Depleted status preserves history without deletion
-5. **Vanilla JS**: No build step, keep frontend simple
+4. **Depleted status + optional deletion**: Depleted status preserves history by default; hard delete available when needed with cascade to weighings
+5. **Vanilla JS**: No build step, keep frontend simple; client-side toggle for show/hide
 6. **TomSelect for dropdowns**: Better UX than plain select elements
 7. **Chart.js**: Visualize trends without heavy dependencies
+8. **UUID-based IDs**: Robust unique identifiers combining UUID + timestamp for canister labels
+9. **Unified logging**: Consistent format across uvicorn and application logs for easier debugging
 
 ## Worktree Configuration
 
