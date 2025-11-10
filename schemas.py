@@ -15,24 +15,24 @@ class CanisterTypeResponse(BaseModel):
     gas_capacity: int
 
 class CanisterCreate(BaseModel):
-    label: str = Field(..., min_length=1, max_length=100)
+    label: str = Field(..., min_length=1, max_length=64)
     canister_type_id: int
 
 class CanisterResponse(BaseModel):
-    id: int
+    id: str  # Changed from int to str
     label: str
     canister_type_id: int
     status: str
     created_at: datetime
 
 class WeighingCreate(BaseModel):
-    canister_id: int
+    canister_id: str
     weight: int = Field(..., gt=0)
     comment: Optional[str] = None
 
 class WeighingResponse(BaseModel):
     id: int
-    canister_id: int
+    canister_id: str
     weight: int
     comment: Optional[str]
     recorded_at: datetime
