@@ -34,11 +34,11 @@ def create_weighing(weighing: WeighingCreate):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("", response_model=list[WeighingResponse])
-def list_weighings(canister_id: Optional[str] = Query(None)):  # Changed from Optional[int]
+def list_weighings(canister_id: Optional[str] = Query(None)):
     """List weighings, optionally filtered by canister"""
     query = Weighing.select()
     if canister_id:
-        query = query.where(Weighing.canister == canister_id)
+        query = query.where(Weighing.canister_id == canister_id)
 
     query = query.order_by(Weighing.recorded_at.desc())
 
