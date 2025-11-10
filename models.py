@@ -16,7 +16,8 @@ class CanisterType(BaseModel):
         return self.full_weight - self.empty_weight
 
 class Canister(BaseModel):
-    label = CharField()
+    id = CharField(primary_key=True)  # UUID-based string
+    label = CharField(max_length=64)  # User-editable friendly name
     canister_type = ForeignKeyField(CanisterType, backref='canisters')
     status = CharField(default='active')  # active or depleted
     created_at = DateTimeField(default=datetime.now)
