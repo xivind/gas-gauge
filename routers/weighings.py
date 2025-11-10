@@ -15,7 +15,7 @@ def create_weighing(weighing: WeighingCreate):
         canister = Canister.get_by_id(weighing.canister_id)
 
         w = Weighing.create(**weighing.model_dump())
-        logger.info(f"Created weighing for canister {canister.label}: {w.weight}g")
+        logger.info(f"Created weighing for canister {canister.id} ({canister.label}): {w.weight}g")
 
         return {
             "id": w.id,
@@ -34,7 +34,7 @@ def create_weighing(weighing: WeighingCreate):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("", response_model=list[WeighingResponse])
-def list_weighings(canister_id: Optional[int] = Query(None)):
+def list_weighings(canister_id: Optional[str] = Query(None)):  # Changed from Optional[int]
     """List weighings, optionally filtered by canister"""
     query = Weighing.select()
     if canister_id:

@@ -48,5 +48,11 @@ def client():
 @pytest.fixture
 def canister():
     """Create test canister with type"""
+    from utils import generate_canister_id
     ct = CanisterType.create(name="Coleman 240g", full_weight=361, empty_weight=122)
-    return Canister.create(label="Test Canister", canister_type=ct, status="active")
+    return Canister.create(
+        id=generate_canister_id(),
+        label="Test Canister",
+        canister_type=ct,
+        status="active"
+    )
