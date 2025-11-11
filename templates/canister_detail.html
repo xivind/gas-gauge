@@ -173,19 +173,23 @@
     const rawGrams = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
     const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
     const rawLabels = [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}];
+    const n = rawLabels.length;
 
-    // Add padding for visual inset on a category axis
-    // One empty label and null data point at the beginning and end
-    const paddedLabels = ['', ...rawLabels, ''];
-    const paddedPercentages = [null, ...rawPercentages.map(Number), null];
-    const paddedGrams = [null, ...rawGrams, null];
+    // Build data points with x-values from 0 to n-1
+    const dataPoints = [];
+    for (let i = 0; i < n; i++) {
+        dataPoints.push({
+            x: i,
+            y: Number(rawPercentages[i]),
+            grams: rawGrams[i],
+            label: rawLabels[i] // Keep the label inside the point for the tooltip
+        });
+    }
 
     const chartData = {
-        labels: paddedLabels, // Use padded labels for the x-axis
         datasets: [{
             label: 'Remaining Gas (%)',
-            data: paddedPercentages, // Use padded data
-            grams: paddedGrams,      // Store grams here for the tooltip
+            data: dataPoints,
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
             tension: 0.1,
@@ -194,9 +198,9 @@
         }]
     };
 
-    // Create chart (Chart.js v3+ expected)
+    // Create chart
     const ctx = document.getElementById('gasOverTimeChart');
-    if (ctx) {
+    if (ctx && n > 0) { // Only render chart if there is data
         new Chart(ctx, {
             type: 'line',
             data: chartData,
@@ -210,22 +214,14 @@
                     },
                     tooltip: {
                         callbacks: {
-                            // Display the date as the tooltip title
+                            // Display the date as the tooltip title from the raw data point
                             title: function(context) {
-                                return context[0].label || '';
+                                return context[0]?.raw?.label || '';
                             },
                             label: function(context) {
-                                const percentage = context.parsed.y;
-                                // Retrieve grams from our custom dataset property
-                                const grams = context.dataset.grams[context.dataIndex];
-
-                                const p = (typeof percentage === 'number') ? percentage.toFixed(1) : percentage;
-
-                                // Don't show the label if grams is not available (for the padded points)
-                                if (typeof grams === 'undefined' || grams === null) {
-                                    return null;
-                                }
-
+                                const y = context.parsed.y;
+                                const grams = context.raw.grams;
+                                const p = (typeof y === 'number') ? y.toFixed(1) : y;
                                 return `${p}% (${grams}g remaining)`;
                             }
                         }
@@ -233,7 +229,30 @@
                 },
                 scales: {
                     x: {
-                        type: 'category' // Use category scale for discrete labels (dates)
+                        type: 'linear',
+                        // Add 0.5 padding on each side for a clean inset look
+                        min: -0.5,
+                        max: n > 1 ? n - 0.5 : 0.5, // Handle single point case
+                        ticks: {
+                            // Only show labels for integer values that correspond to data points
+                            callback: function(value) {
+                                if (Number.isInteger(value) && value >= 0 && value < n) {
+                                    return rawLabels[value];
+                                }
+                                return ''; // No label for other auto-generated ticks
+                            }
+                        },
+                        grid: {
+                            // Only draw grid lines for ticks that are actual data points
+                            color: function(context) {
+                                if (context.tick && Number.isInteger(context.tick.value) && context.tick.value >= 0 && context.tick.value < n) {
+                                    // Default grid color for data points
+                                    return 'rgba(0, 0, 0, 0.1)';
+                                }
+                                // No grid lines for padded areas or other ticks
+                                return 'transparent';
+                            }
+                        }
                     },
                     y: {
                         beginAtZero: true,
