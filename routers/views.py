@@ -48,8 +48,8 @@ def dashboard(request: Request):
     # Sort canisters: active first, then depleted
     canister_data.sort(key=lambda x: (x["is_depleted"], x["canister"].label))
 
-    # Generate suggested label for new canister
-    suggested_label = generate_canister_id()
+    # Generate suggested label for new canister (trimmed for user display)
+    suggested_label = generate_canister_id()[:7]  # GC- + first 4 chars only
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
