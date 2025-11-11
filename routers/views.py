@@ -2,18 +2,11 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from models import Canister, CanisterType, Weighing
-import time
-import uuid
+from utils import generate_canister_id
 from datetime import datetime
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter()
-
-def generate_unique_id():
-    """Generate a random and unique ID"""
-    unique_id_part1 = uuid.uuid4()
-    unique_id_part2 = time.time()
-    return f'{str(unique_id_part1)[:6]}{str(unique_id_part2)[-4:]}'
 
 def get_status_class(percentage):
     """Get CSS class for percentage"""
@@ -53,8 +46,8 @@ def dashboard(request: Request):
     # Sort canisters: active first, then depleted
     canister_data.sort(key=lambda x: (x["is_depleted"], x["canister"].label))
 
-    # Generate suggested label using unique ID
-    suggested_label = f"GC-{generate_unique_id()}"
+    # Generate suggested label for new canister
+    suggested_label = generate_canister_id()
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
@@ -70,7 +63,7 @@ def create_canister_form(label: str = Form(...), canister_type_id: int = Form(..
     return RedirectResponse(url="/", status_code=303)
 
 @router.get("/canister/{canister_id}", response_class=HTMLResponse)
-def canister_detail(request: Request, canister_id: int):
+def canister_detail(request: Request, canister_id: str):
     """Canister detail page with weighing history"""
     try:
         canister = Canister.get_by_id(canister_id)
