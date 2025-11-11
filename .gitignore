@@ -209,3 +209,6 @@ __marimo__/
 
 # Gas Gauge - Local database
 data/
+
+# Playwright MCP
+.playwright-mcp/
