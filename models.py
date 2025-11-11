@@ -1,4 +1,4 @@
-from peewee import Model, CharField, IntegerField, ForeignKeyField, TextField, DateTimeField
+from peewee import Model, CharField, IntegerField, ForeignKeyField, TextField, DateTimeField, AutoField
 from database import db
 from datetime import datetime
 
@@ -7,6 +7,7 @@ class BaseModel(Model):
         database = db
 
 class CanisterType(BaseModel):
+    id = AutoField()  # Explicit auto-incrementing primary key
     name = CharField(unique=True)
     full_weight = IntegerField()  # grams
     empty_weight = IntegerField()  # grams
@@ -23,6 +24,7 @@ class Canister(BaseModel):
     created_at = DateTimeField(default=datetime.now)
 
 class Weighing(BaseModel):
+    id = AutoField()  # Explicit auto-incrementing primary key
     canister = ForeignKeyField(Canister, backref='weighings')
     weight = IntegerField()  # grams
     comment = TextField(null=True)
