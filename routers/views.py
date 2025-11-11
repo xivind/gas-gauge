@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from models import Canister, CanisterType, Weighing
 from utils import generate_canister_id
 from datetime import datetime
+import logging
 
+logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
 router = APIRouter()
 
@@ -90,7 +92,7 @@ def canister_detail(request: Request, canister_id: str):
 
 @router.post("/canister/{canister_id}/add-weighing")
 def add_weighing_form(
-    canister_id: int,
+    canister_id: str,
     weight: int = Form(...),
     recorded_at: str = Form(...),
     comment: str = Form(None)
@@ -107,7 +109,7 @@ def add_weighing_form(
     return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
 
 @router.post("/canister/{canister_id}/mark-depleted")
-def mark_canister_depleted(canister_id: int):
+def mark_canister_depleted(canister_id: str):
     """Mark canister as depleted"""
     canister = Canister.get_by_id(canister_id)
     canister.status = "depleted"
@@ -115,7 +117,7 @@ def mark_canister_depleted(canister_id: int):
     return RedirectResponse(url="/", status_code=303)
 
 @router.post("/canister/{canister_id}/reactivate")
-def reactivate_canister(canister_id: int):
+def reactivate_canister(canister_id: str):
     """Reactivate a depleted canister"""
     canister = Canister.get_by_id(canister_id)
     canister.status = "active"
@@ -123,17 +125,44 @@ def reactivate_canister(canister_id: int):
     return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
 
 @router.post("/canister/{canister_id}/delete")
-def delete_canister(canister_id: int):
+def delete_canister(canister_id: str):
     """Delete canister and all its weighings"""
     try:
         canister = Canister.get_by_id(canister_id)
-        # Delete all weighings first
+        label = canister.label
+        canister_id_str = canister.id
+
+        # Delete all weighings first (cascade)
         Weighing.delete().where(Weighing.canister == canister).execute()
+
         # Delete the canister
         canister.delete_instance()
+
+        logger.info(f"Deleted canister {canister_id_str} ({label}) and all weighings")
+        return RedirectResponse(url="/", status_code=303)
     except Canister.DoesNotExist:
-        pass
-    return RedirectResponse(url="/", status_code=303)
+        raise HTTPException(status_code=404, detail="Canister not found")
+
+@router.post("/canister/{canister_id}/update-label", response_class=RedirectResponse)
+def update_canister_label(canister_id: str, label: str = Form(...)):
+    """Update canister label"""
+    try:
+        # Validate label
+        if not label or label.strip() == "":
+            raise HTTPException(status_code=400, detail="Label cannot be empty")
+
+        if len(label) > 64:
+            raise HTTPException(status_code=400, detail="Label cannot exceed 64 characters")
+
+        canister = Canister.get_by_id(canister_id)
+        old_label = canister.label
+        canister.label = label.strip()
+        canister.save()
+
+        logger.info(f"Updated canister {canister_id} label from '{old_label}' to '{label}'")
+        return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
+    except Canister.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Canister not found")
 
 @router.post("/weighing/{weighing_id}/delete")
 def delete_weighing(weighing_id: int):
