@@ -3,6 +3,7 @@
 **Date:** 2025-11-11
 **Goal:** Simplify codebase following velo-supervisor-2000 patterns
 **Approach:** Remove magic, consolidate files, improve clarity
+**Strategy:** Greenfield - Start with fresh database (app not yet in production)
 
 ---
 
@@ -48,14 +49,13 @@ gas-gauge/
 
 ## 🎯 Target State
 
-### File Structure (7 Python files)
+### File Structure (6 Python files)
 ```
 gas-gauge/
 ├── database_model.py            # NEW NAME - Simple Peewee models, NO magic
-├── database_manager.py          # REFACTORED - Class-based with transactions
+├── database_manager.py          # REFACTORED - Class-based with transactions + DB init
 ├── business_logic.py            # NEW FILE - Calculations and orchestration
 ├── main.py                      # REFACTORED - All routes consolidated here
-├── database.py                  # KEEP - Minor updates
 ├── utils.py                     # KEEP - As-is
 ├── logger.py                    # KEEP - As-is
 └── seed_data.py                 # UPDATE - Use new patterns
@@ -72,10 +72,11 @@ gas-gauge/
 
 ## 📋 Detailed Changes by File
 
-### 1. ❌ DELETE (9 files)
+### 1. ❌ DELETE (11 files + database)
 
 **Remove completely:**
 ```
+database.py                      # Merged into database_manager.py
 schemas.py                       # Pydantic validation removed
 recreate_db.py                   # Utility script, not needed
 routers/__init__.py              # No routers folder
@@ -84,7 +85,10 @@ routers/canisters.py             # Merged into main.py
 routers/weighings.py             # Merged into main.py
 routers/views.py                 # Merged into main.py
 tests/                           # All 8 test files deleted
+data/gas_gauge.db                # Fresh start - delete existing database
 ```
+
+**Greenfield approach:** Since app is not yet in production, we'll delete the existing database and start fresh with the new schema.
 
 ---
 
@@ -161,10 +165,10 @@ class Weighing(BaseModel):
 
 ### 3. 🔨 REFACTOR database_manager.py
 
-**Convert from functions to class:**
+**Convert from functions to class AND merge database.py into it:**
 
 ```python
-# BEFORE (function-based):
+# BEFORE (function-based in database_manager.py):
 def create_canister(label: str, canister_type_id: int) -> Canister:
     try:
         canister_id = generate_canister_id()
@@ -181,13 +185,32 @@ def create_canister(label: str, canister_type_id: int) -> Canister:
 ```
 
 ```python
-# AFTER (class-based with transactions):
+# AFTER (class-based with transactions + DB setup from old database.py):
+import os
 import peewee
-from database_model import database, CanisterType, Canister, Weighing
+import logging
+from peewee import SqliteDatabase
+from dotenv import load_dotenv
+
+load_dotenv()
+logger = logging.getLogger(__name__)
+
+# Database setup (from old database.py)
+DATABASE_PATH = os.getenv("DATABASE_PATH", "./data/gas_gauge.db")
+os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+database = SqliteDatabase(DATABASE_PATH)
 
 class DatabaseManager:
     def __init__(self):
         self.database = database
+
+    def init_db(self):
+        """Initialize database tables"""
+        from database_model import CanisterType, Canister, Weighing
+        self.database.connect()
+        self.database.create_tables([CanisterType, Canister, Weighing], safe=True)
+        self.database.close()
+        logger.info("Database tables created")
 
     def read_single_canister(self, canister_id):
         """Retrieve a single canister by ID"""
@@ -662,44 +685,213 @@ def seed_canister_types():
 
 ---
 
-### 7. 📝 UPDATE database.py
+### 7. 📝 UPDATE main.py imports
+
+**Update database imports since database.py is now merged:**
 
 ```python
-import os
-from peewee import SqliteDatabase
-from dotenv import load_dotenv
+# BEFORE:
+from database import init_db
 
-load_dotenv()
+# AFTER:
+from database_manager import DatabaseManager
 
-DATABASE_PATH = os.getenv("DATABASE_PATH", "./data/gas_gauge.db")
-
-# Ensure data directory exists
-os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
-
-db = SqliteDatabase(DATABASE_PATH)
-
-def init_db():
-    """Initialize database tables"""
-    from database_model import CanisterType, Canister, Weighing
-    db.connect()
-    db.create_tables([CanisterType, Canister, Weighing], safe=True)
-    db.close()
+# Then in startup:
+db_manager = DatabaseManager()
+db_manager.init_db()
 ```
-
-**Changes:**
-- ✅ Import from `database_model` instead of `models`
 
 ---
 
-### 8. 📝 UPDATE templates (Minor fixes)
+### 8. 📝 UPDATE templates/dashboard.html
 
-**templates/dashboard.html:**
-- Line 134: Fix typo "Remaining Gas (% Wro)" → "Remaining Gas (%)"
-- Update data access: `canister_data.canister` → `canister_data["canister"]`
-- Update data access: `canister_data.latest_weighing` → `canister_data["latest_weighing"]`
+**Data structure changes - business_logic returns dicts instead of model objects:**
 
-**templates/canister_detail.html:**
-- No major changes needed, but verify data structure matches new business_logic return format
+```html
+<!-- BEFORE: Line 27-57 -->
+{% for canister_data in canisters %}
+<div class="col-md-4 mb-4 canister-card-wrapper {% if canister_data.is_depleted %}depleted-canister{% endif %}"
+     data-depleted="{{ 'true' if canister_data.is_depleted else 'false' }}">
+    <div class="card canister-card {% if canister_data.is_depleted %}card-depleted{% else %}card-status-{{ canister_data.status_class }}{% endif %}"
+         onclick="window.location.href='/canister/{{ canister_data.canister.id }}'">
+        <div class="card-body">
+            <h5 class="card-title">
+                {{ canister_data.canister.label }}
+                {% if canister_data.is_depleted %}
+                <span class="badge bg-secondary ms-2">Depleted</span>
+                {% endif %}
+            </h5>
+            <p class="card-text text-muted small">ID: {{ canister_data.canister.id }}</p>
+            <p class="card-text text-muted">{{ canister_data.canister.canister_type.name }}</p>
+
+            {% if canister_data.latest_weighing %}
+            <div class="percentage-display status-{{ canister_data.status_class }}">
+                {{ "%.0f"|format(canister_data.latest_weighing.remaining_percentage) }}%
+            </div>
+            <p class="card-text">
+                <small class="text-muted">
+                    Last weighed: {{ canister_data.latest_weighing.recorded_at.strftime('%Y-%m-%d') }}
+                </small>
+            </p>
+            {% else %}
+            <p class="card-text text-muted">No weighings yet</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- AFTER: Line 27-57 - dict access and calculation moved to business_logic -->
+{% for cd in canisters %}
+<div class="col-md-4 mb-4 canister-card-wrapper {% if cd['is_depleted'] %}depleted-canister{% endif %}"
+     data-depleted="{{ 'true' if cd['is_depleted'] else 'false' }}">
+    <div class="card canister-card {% if cd['is_depleted'] %}card-depleted{% else %}card-status-{{ cd['status_class'] }}{% endif %}"
+         onclick="window.location.href='/canister/{{ cd['canister'].id }}'">
+        <div class="card-body">
+            <h5 class="card-title">
+                {{ cd['canister'].label }}
+                {% if cd['is_depleted'] %}
+                <span class="badge bg-secondary ms-2">Depleted</span>
+                {% endif %}
+            </h5>
+            <p class="card-text text-muted small">ID: {{ cd['canister'].id }}</p>
+            <p class="card-text text-muted">{{ cd['canister_type'].name }}</p>
+
+            {% if cd['latest_weighing'] %}
+            <div class="percentage-display status-{{ cd['status_class'] }}">
+                {{ "%.0f"|format(cd['remaining_percentage']) }}%
+            </div>
+            <p class="card-text">
+                <small class="text-muted">
+                    Last weighed: {{ cd['latest_weighing'].recorded_at }}
+                </small>
+            </p>
+            {% else %}
+            <p class="card-text text-muted">No weighings yet</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+```
+
+**Chart data update (line 131-142):**
+```html
+<!-- BEFORE: -->
+const chartData = {
+    labels: [{% for cd in canisters %}{% if not cd.is_depleted %}'{{ cd.canister.label }}',{% endif %}{% endfor %}],
+    datasets: [{
+        label: 'Remaining Gas (% Wro)',
+        data: [{% for cd in canisters %}{% if not cd.is_depleted %}{{ cd.latest_weighing.remaining_percentage if cd.latest_weighing else 0 }},{% endif %}{% endfor %}],
+        backgroundColor: [{% for cd in canisters %}{% if not cd.is_depleted %}
+            '{% if cd.status_class == "high" %}rgba(40, 167, 69, 0.7){% elif cd.status_class == "medium" %}rgba(255, 193, 7, 0.7){% else %}rgba(220, 53, 69, 0.7){% endif %}',
+        {% endif %}{% endfor %}]
+    }]
+};
+
+<!-- AFTER: -->
+const chartData = {
+    labels: [{% for cd in canisters %}{% if not cd['is_depleted'] %}'{{ cd['canister'].label }}',{% endif %}{% endfor %}],
+    datasets: [{
+        label: 'Remaining Gas (%)',
+        data: [{% for cd in canisters %}{% if not cd['is_depleted'] %}{{ cd['remaining_percentage'] if cd['remaining_percentage'] is not none else 0 }},{% endif %}{% endfor %}],
+        backgroundColor: [{% for cd in canisters %}{% if not cd['is_depleted'] %}
+            '{% if cd['status_class'] == "high" %}rgba(40, 167, 69, 0.7){% elif cd['status_class'] == "medium" %}rgba(255, 193, 7, 0.7){% else %}rgba(220, 53, 69, 0.7){% endif %}',
+        {% endif %}{% endfor %}]
+    }]
+};
+```
+
+**Key changes:**
+- ✅ Fix typo: "% Wro" → "%"
+- ✅ Dict access: `cd.field` → `cd['field']`
+- ✅ Nested access for model objects: `cd['canister'].label` (canister is still a model instance)
+- ✅ Date is now a string, remove `.strftime()`
+- ✅ Percentage comes from dict, not computed property
+
+---
+
+### 9. 📝 UPDATE templates/canister_detail.html
+
+**Weighing data changes - now comes as enriched dicts:**
+
+```html
+<!-- BEFORE: Line 94-111 (table rows) -->
+{% for weighing in weighings %}
+<tr>
+    <td>{{ weighing.recorded_at.strftime('%Y-%m-%d') }}</td>
+    <td>{{ weighing.weight }}</td>
+    <td>{{ weighing.remaining_gas }}</td>
+    <td>{{ "%.1f"|format(weighing.remaining_percentage) }}%</td>
+    <td>{{ "%.1f"|format(weighing.consumption_percentage) }}%</td>
+    <td>{{ weighing.comment or '-' }}</td>
+    <td>
+        <form method="POST" action="/weighing/{{ weighing.id }}/delete" style="display: inline;">
+            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this weighing record?')">
+                Delete
+            </button>
+        </form>
+    </td>
+</tr>
+{% endfor %}
+
+<!-- AFTER: Line 94-111 - weighings are now dicts from business_logic -->
+{% for w in weighings %}
+<tr>
+    <td>{{ w['recorded_at'] }}</td>
+    <td>{{ w['weight'] }}</td>
+    <td>{{ w['remaining_gas'] }}</td>
+    <td>{{ "%.1f"|format(w['remaining_percentage']) }}%</td>
+    <td>{{ "%.1f"|format(w['consumption_percentage']) }}%</td>
+    <td>{{ w['comment'] or '-' }}</td>
+    <td>
+        <form method="POST" action="/weighing/{{ w['id'] }}/delete" style="display: inline;">
+            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this weighing record?')">
+                Delete
+            </button>
+        </form>
+    </td>
+</tr>
+{% endfor %}
+```
+
+**Chart data update (line 172-187):**
+```html
+<!-- BEFORE: -->
+const rawGrams = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
+const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
+const rawLabels = [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}];
+
+<!-- AFTER: -->
+const rawGrams = [{% for w in weighings|reverse %}{{ w['remaining_gas'] }},{% endfor %}];
+const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w['remaining_percentage']) }},{% endfor %}];
+const rawLabels = [{% for w in weighings|reverse %}'{{ w['recorded_at'] }}',{% endfor %}];
+```
+
+**Latest weighing display (line 16-21):**
+```html
+<!-- BEFORE: -->
+{% if latest_weighing %}
+<div class="percentage-display status-{{ status_class }}">
+    {{ "%.0f"|format(latest_weighing.remaining_percentage) }}%
+</div>
+<p class="text-muted text-end">{{ latest_weighing.remaining_gas }}g / {{ canister.canister_type.gas_capacity }}g</p>
+{% endif %}
+
+<!-- AFTER: -->
+{% if latest_weighing %}
+<div class="percentage-display status-{{ status_class }}">
+    {{ "%.0f"|format(latest_weighing['remaining_percentage']) }}%
+</div>
+<p class="text-muted text-end">{{ latest_weighing['remaining_gas'] }}g / {{ (canister_type.full_weight - canister_type.empty_weight) }}g</p>
+{% endif %}
+```
+
+**Key changes:**
+- ✅ Dict access for weighings: `w.field` → `w['field']`
+- ✅ Date is string, remove `.strftime()`
+- ✅ Calculate gas_capacity inline since it's no longer a property
+- ✅ Access canister_type directly (passed separately now)
 
 ---
 
@@ -727,10 +919,10 @@ After refactoring, verify:
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| Python files | 22 | 7 | -68% |
+| Python files | 22 | 6 | -73% |
 | Router files | 4 | 0 (merged) | -100% |
 | Test files | 8 | 0 | -100% |
-| Total LOC | ~2,000 | ~1,200 | -40% |
+| Total LOC | ~2,000 | ~1,000 | -50% |
 | Dependencies | Peewee, Pydantic, FastAPI | Peewee, FastAPI | -1 |
 | Complexity | Medium | Low | ✓ |
 
@@ -771,18 +963,20 @@ After refactoring, verify:
 
 ## 🏁 Execution Order
 
-1. Create `database_model.py` (rename + simplify models.py)
-2. Create `business_logic.py` (new file)
-3. Refactor `database_manager.py` (convert to class)
-4. Refactor `main.py` (consolidate routes)
-5. Update `seed_data.py`
-6. Update `database.py`
-7. Delete `schemas.py`
-8. Delete `routers/` folder
-9. Delete `tests/` folder
-10. Delete `recreate_db.py`
-11. Fix template typos
-12. Manual testing
+1. **Delete existing database** - `rm -rf data/`
+2. **Create `database_model.py`** - Rename + simplify models.py (no magic)
+3. **Create `business_logic.py`** - New file with calculations
+4. **Refactor `database_manager.py`** - Convert to class + merge database.py
+5. **Refactor `main.py`** - Consolidate all routes + update imports
+6. **Update `seed_data.py`** - Use new DatabaseManager class
+7. **Update `templates/dashboard.html`** - Dict access + fix typo
+8. **Update `templates/canister_detail.html`** - Dict access for weighings
+9. **Delete `database.py`** - Merged into database_manager
+10. **Delete `schemas.py`** - Pydantic removed
+11. **Delete `routers/` folder** - All 4 router files
+12. **Delete `tests/` folder** - All 8 test files
+13. **Delete `recreate_db.py`** - Utility script
+14. **Manual testing** - Verify all functionality works
 
 ---
 
@@ -791,9 +985,15 @@ After refactoring, verify:
 - Keep `utils.py`, `logger.py` unchanged
 - Keep `requirements.txt` but can remove pytest dependencies later
 - Keep Docker files unchanged
-- Keep CLAUDE.md but update to reflect new structure
-- Database file remains compatible (no schema migration needed)
+- Update CLAUDE.md to reflect new structure after refactoring
+- **Greenfield approach:** Fresh database, no migration concerns
+- Frontend templates updated to work with new data structures (dicts instead of model properties)
 
 ---
 
-**Ready to execute? Confirm to proceed with refactoring.**
+**Plan updated with:**
+- ✅ Greenfield approach (delete existing database)
+- ✅ Merge database.py into database_manager.py
+- ✅ Detailed frontend template updates
+
+**Ready to execute!**
