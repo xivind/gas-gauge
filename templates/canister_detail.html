@@ -183,7 +183,12 @@
     // Build data points only for real measurements (x positions 1..n)
     const dataPoints = [];
     for (let i = 0; i < n; i++) {
-        dataPoints.push({ x: i + 1, y: Number(rawPercentages[i]), grams: rawGrams[i] });
+        dataPoints.push({
+            x: i + 1,
+            y: Number(rawPercentages[i]),
+            grams: rawGrams[i],
+            label: rawLabels[i] // Pass the date label into the data point
+        });
     }
 
     const chartData = {
@@ -226,10 +231,15 @@
                     },
                     tooltip: {
                         callbacks: {
+                            // Display the date as the tooltip title
+                            title: function(context) {
+                                const point = context[0];
+                                return point.raw.label || '';
+                            },
                             label: function(context) {
-                                const percentage = (context.raw && typeof context.raw.y !== 'undefined') ? context.raw.y : (context.parsed ? context.parsed.y : context.yLabel);
+                                const percentage = context.raw.y;
                                 const p = (typeof percentage === 'number') ? percentage.toFixed(1) : percentage;
-                                const grams = (context.raw && typeof context.raw.grams !== 'undefined') ? context.raw.grams : undefined;
+                                const grams = context.raw.grams;
                                 return `${p}% (${grams}g remaining)`;
                             }
                         }
