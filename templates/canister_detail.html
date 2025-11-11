@@ -176,18 +176,59 @@
         fp.setDate(new Date(), false);  // Set to today without closing
     });
 
-    // Create gas over time chart
+    // Create gas over time chart with percentage
+    const gramsData = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
+    const percentageData = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
+
     const chartData = {
         labels: [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}],
         datasets: [{
-            label: 'Remaining Gas (g)',
-            data: [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}],
+            label: 'Remaining Gas (%)',
+            data: percentageData,
+            grams: gramsData,  // Store grams for tooltip
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
             tension: 0.1
         }]
     };
 
-    createLineChart('gasOverTimeChart', chartData, 'Gas Remaining Over Time');
+    // Create chart with custom tooltip showing both percentage and grams
+    const ctx = document.getElementById('gasOverTimeChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Gas Remaining Over Time (%)'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const percentage = context.parsed.y.toFixed(1);
+                                const grams = context.dataset.grams[context.dataIndex];
+                                return `${percentage}% (${grams}g remaining)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}
