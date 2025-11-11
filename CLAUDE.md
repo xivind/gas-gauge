@@ -9,7 +9,7 @@ Gas Gauge is a web application to track remaining gas in canisters for camp stov
 ## Technology Stack
 
 - **Backend:** FastAPI, Uvicorn, Peewee ORM, SQLite
-- **Frontend:** Jinja2 templates, Bootstrap 5, Chart.js, TomSelect, Vanilla JavaScript
+- **Frontend:** Jinja2 templates, Bootstrap 5, Chart.js, TomSelect, Flatpickr, Vanilla JavaScript
 - **Deployment:** Docker (no docker-compose)
 - **Testing:** pytest
 
@@ -112,11 +112,11 @@ Three main models with computed properties:
 
 ### Frontend Organization
 
-- `templates/base.html`: Base template with Bootstrap, Chart.js, TomSelect, navbar with logo
+- `templates/base.html`: Base template with Bootstrap, Chart.js, TomSelect, Flatpickr, navbar with logo
 - `templates/dashboard.html`: All canisters with "Show Depleted" toggle and overview chart
-- `templates/canister_detail.html`: Individual canister with history, charts, and deletion
+- `templates/canister_detail.html`: Individual canister with history, charts, deletion, and date picker
 - `templates/admin/types.html`: Manage canister types
-- `static/css/custom.css`: Color-coded status indicators and navbar styling
+- `static/css/custom.css`: Color-coded status indicators, navbar styling, and Flatpickr theme
 - `static/js/charts.js`: Chart.js helper functions
 - `static/js/app.js`: Form handling and utilities
 - `static/gas_gauge.png`: Transparent logo image (1024x1024)
@@ -265,10 +265,11 @@ This will:
 4. **Depleted status + optional deletion**: Depleted status preserves history by default; hard delete available when needed with cascade to weighings
 5. **Vanilla JS**: No build step, keep frontend simple; client-side toggle for show/hide
 6. **TomSelect for dropdowns**: Better UX than plain select elements
-7. **Chart.js**: Visualize trends without heavy dependencies
-8. **UUID-based IDs**: Robust unique identifiers combining UUID + timestamp for canister labels
-9. **Unified logging**: Consistent format across uvicorn and application logs for easier debugging
-10. **Date format consistency**: All dates use ISO 8601 format (YYYY-MM-DD) across GUI, database, logs, and APIs for consistency and internationalization
+7. **Flatpickr for date picker**: Consistent YYYY-MM-DD format display across all browsers/locales
+8. **Chart.js**: Visualize trends without heavy dependencies
+9. **UUID-based IDs**: Robust unique identifiers combining UUID + timestamp for canister labels
+10. **Unified logging**: Consistent format across uvicorn and application logs for easier debugging
+11. **Date format consistency**: All dates use ISO 8601 format (YYYY-MM-DD) across GUI, database, logs, and APIs; Flatpickr ensures consistent date picker display
 
 ## Worktree Configuration
 

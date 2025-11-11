@@ -141,7 +141,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="recorded_at" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="recorded_at" name="recorded_at" required>
+                        <input type="text" class="form-control" id="recorded_at" name="recorded_at" placeholder="YYYY-MM-DD" required>
                     </div>
                     <div class="mb-3">
                         <label for="comment" class="form-label">Comment (optional)</label>
@@ -161,16 +161,19 @@
 {% block scripts %}
 <script src="/static/js/charts.js"></script>
 <script>
-    // Set default date to today when modal opens
+    // Initialize Flatpickr with YYYY-MM-DD format
+    const dateInput = document.getElementById('recorded_at');
+    const fp = flatpickr(dateInput, {
+        dateFormat: "Y-m-d",  // YYYY-MM-DD format
+        defaultDate: "today",
+        allowInput: true,     // Allow manual typing
+        disableMobile: true   // Use Flatpickr on mobile too (not native picker)
+    });
+
+    // Reset date to today when modal opens
     const addWeighingModal = document.getElementById('addWeighingModal');
     addWeighingModal.addEventListener('show.bs.modal', function () {
-        const now = new Date();
-        // Format: YYYY-MM-DD
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const date = `${year}-${month}-${day}`;
-        document.getElementById('recorded_at').value = date;
+        fp.setDate(new Date(), false);  // Set to today without closing
     });
 
     // Create gas over time chart
