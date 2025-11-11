@@ -8,7 +8,7 @@
         <h1>{{ canister.label }}</h1>
         <p class="text-muted">
             ID: {{ canister.id }} |
-            Type: {{ canister.canister_type.name }} |
+            Type: {{ canister_type.name }} |
             Status: <span class="badge {% if canister.status == 'depleted' %}bg-secondary{% else %}bg-success{% endif %}">{{ canister.status }}</span>
         </p>
     </div>
@@ -130,7 +130,7 @@
                     <div class="mb-3">
                         <label for="weight" class="form-label">Weight (grams)</label>
                         <input type="number" class="form-control" id="weight" name="weight" required min="1">
-                        <small class="text-muted">Full weight: {{ canister.canister_type.full_weight }}g</small>
+                        <small class="text-muted">Full weight: {{ canister_type.full_weight }}g</small>
                     </div>
                     <div class="mb-3">
                         <label for="recorded_at" class="form-label">Date</label>
