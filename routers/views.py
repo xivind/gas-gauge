@@ -109,7 +109,7 @@ def update_canister_label_route(canister_id: str, label: str = Form(...)):
     return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
 
 @router.post("/weighing/{weighing_id}/delete")
-def delete_weighing_route(weighing_id: int):
+def delete_weighing_route(weighing_id: str):
     """Delete a weighing record"""
     weighing = db_manager.get_weighing_by_id(weighing_id)
     if weighing:

@@ -152,7 +152,15 @@ def get_latest_weighing(canister: Canister) -> Weighing:
     """Get the latest weighing for a specific canister."""
     return Weighing.select().where(Weighing.canister == canister).order_by(Weighing.recorded_at.desc()).first()
 
-def delete_weighing(weighing_id: int):
+def get_weighing_by_id(weighing_id: str) -> Weighing:
+    """Get a single weighing by its ID."""
+    try:
+        return Weighing.get_by_id(weighing_id)
+    except Weighing.DoesNotExist:
+        logger.warning(f"Weighing with ID {weighing_id} not found.")
+        return None
+
+def delete_weighing(weighing_id: str):
     """Delete a single weighing record."""
     try:
         weighing = Weighing.get_by_id(weighing_id)
