@@ -137,7 +137,7 @@ Implemented in `routers/views.py::get_status_class()` and styled in `static/css/
 
 Unified logging configuration for both FastAPI/uvicorn and application logs:
 - Format: `%(asctime)s - %(levelname)s - %(message)s`
-- Date format: `%d-%b-%y %H:%M:%S`
+- Date format: `%Y-%m-%d %H:%M:%S` (ISO 8601 / YYYY-MM-DD format)
 - Configured in `logger.py` and `uvicorn_log_config.ini`
 - All uvicorn loggers (root, uvicorn, uvicorn.access, uvicorn.error) use same format
 - All logs output to stdout for Docker visibility
@@ -268,6 +268,7 @@ This will:
 7. **Chart.js**: Visualize trends without heavy dependencies
 8. **UUID-based IDs**: Robust unique identifiers combining UUID + timestamp for canister labels
 9. **Unified logging**: Consistent format across uvicorn and application logs for easier debugging
+10. **Date format consistency**: All dates use ISO 8601 format (YYYY-MM-DD) across GUI, database, logs, and APIs for consistency and internationalization
 
 ## Worktree Configuration
 
