@@ -29,7 +29,7 @@
             <td>{{ ct.name }}</td>
             <td>{{ ct.full_weight }}</td>
             <td>{{ ct.empty_weight }}</td>
-            <td>{{ ct.gas_capacity }}</td>
+            <td>{{ ct.full_weight - ct.empty_weight }}</td>
             <td>
                 {% if ct.name not in ['Coleman 240g', 'Coleman 450g'] %}
                 <form method="POST" action="/admin/types/{{ ct.id }}/delete" style="display: inline;">

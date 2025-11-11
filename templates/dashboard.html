@@ -88,7 +88,7 @@
                         <label for="canister_type_id" class="form-label">Canister Type</label>
                         <select class="form-select" id="canister_type_id" name="canister_type_id" required>
                             {% for ct in canister_types %}
-                            <option value="{{ ct.id }}">{{ ct.name }} ({{ ct.gas_capacity }}g capacity)</option>
+                            <option value="{{ ct.id }}">{{ ct.name }} ({{ ct.full_weight - ct.empty_weight }}g capacity)</option>
                             {% endfor %}
                         </select>
                     </div>
