@@ -2,7 +2,7 @@
 
 A web application to track remaining gas in canisters for camp stoves.
 
-![Dashboard Screenshot](docs/screenshot.png)
+![Gas Gauge Logo](static/gas_gauge.png)
 
 ## Features
 
