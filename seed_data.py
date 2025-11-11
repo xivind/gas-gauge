@@ -5,7 +5,6 @@ logger = logging.getLogger(__name__)
 
 PREDEFINED_TYPES = [
     {"name": "Coleman 240g", "full_weight": 361, "empty_weight": 122},
-    {"name": "Coleman 450g", "full_weight": 668, "empty_weight": 218}
 ]
 
 def seed_canister_types():
