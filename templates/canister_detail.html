@@ -169,23 +169,48 @@
         fp.setDate(new Date(), false);  // Set to today without closing
     });
 
-    // Create gas over time chart with percentage
-    const gramsData = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
-    const percentageData = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
+    // Create gas over time chart with percentage and very small inset padding
+    const rawGrams = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
+    const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
+    const rawLabels = [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}];
+
+    const n = rawPercentages.length;
+    // Slight inset fraction (2%); increases space at both ends
+    const insetFraction = 0.02;
+    const leftX = 1 - insetFraction;
+    const rightX = n + insetFraction;
+
+    // Build data points only for real measurements (x positions 1..n)
+    const dataPoints = [];
+    for (let i = 0; i < n; i++) {
+        dataPoints.push({ x: i + 1, y: Number(rawPercentages[i]), grams: rawGrams[i] });
+    }
 
     const chartData = {
-        labels: [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}],
         datasets: [{
             label: 'Remaining Gas (%)',
-            data: percentageData,
-            grams: gramsData,  // Store grams for tooltip
+            data: dataPoints,
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.1
+            // Don't draw a connecting line if there's only one real data point
+            showLine: (n > 1),
+            tension: 0.1,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            // Avoid drawing segments that would connect beyond real data points
+            segment: {
+                // draw segment only if both endpoints are real data points (x integer between 1..n)
+                borderColor: function(ctx) {
+                    const p0 = ctx.p0 && ctx.p0.parsed ? ctx.p0.parsed.x : (ctx.p0 && ctx.p0.raw ? ctx.p0.raw.x : null);
+                    const p1 = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.x : (ctx.p1 && ctx.p1.raw ? ctx.p1.raw.x : null);
+                    const isIntegerInRange = (v) => Number.isInteger(v) && v >= 1 && v <= n;
+                    return (isIntegerInRange(p0) && isIntegerInRange(p1)) ? 'rgb(75, 192, 192)' : 'transparent';
+                }
+            }
         }]
     };
 
-    // Create chart with custom tooltip showing both percentage and grams
+    // Create chart (Chart.js v3+ expected)
     const ctx = document.getElementById('gasOverTimeChart');
     if (ctx) {
         new Chart(ctx, {
@@ -202,25 +227,37 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const percentage = context.parsed.y.toFixed(1);
-                                const grams = context.dataset.grams[context.dataIndex];
-                                return `${percentage}% (${grams}g remaining)`;
+                                const percentage = (context.raw && typeof context.raw.y !== 'undefined') ? context.raw.y : (context.parsed ? context.parsed.y : context.yLabel);
+                                const p = (typeof percentage === 'number') ? percentage.toFixed(1) : percentage;
+                                const grams = (context.raw && typeof context.raw.grams !== 'undefined') ? context.raw.grams : undefined;
+                                return `${p}% (${grams}g remaining)`;
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
-                        min: -0.5,
-                        max: {{ weighings|length - 0.5 }}
+                        type: 'linear',
+                        min: leftX,
+                        max: rightX,
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value) {
+                                // value may be a fractional tick when axis min/max are insetFraction off integers.
+                                // Accept values very close to integers and map them to labels.
+                                const rounded = Math.round(value);
+                                if (Math.abs(value - rounded) < 0.001 && rounded >= 1 && rounded <= n) {
+                                    return rawLabels[rounded - 1];
+                                }
+                                return '';
+                            }
+                        }
                     },
                     y: {
                         beginAtZero: true,
                         max: 100,
                         ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
+                            callback: function(value) { return value + '%'; }
                         }
                     }
                 }
