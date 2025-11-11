@@ -1,34 +1,52 @@
 #!/usr/bin/env python3
-"""Drop and recreate database tables for UUID migration"""
+"""Drops, creates, and seeds the database.
 
-import os
-from database import db, init_db
-from models import CanisterType, Canister, Weighing
-from seed_data import seed_canister_types
+This script is idempotent and can be run safely to reset the database to a clean state.
+It uses the centralized logging configuration.
+"""
+
 import logging
+from database import db
+from models import Canister, CanisterType, Weighing
+from seed_data import seed_canister_types
+from logger import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+setup_logging()
 logger = logging.getLogger(__name__)
 
 def recreate_database():
-    """Drop all tables and recreate with new schema"""
-    logger.info("Connecting to database...")
-    db.connect()
+    """Drops all tables, recreates them, and seeds with initial data."""
+    logger.info("Starting database recreation process...")
+    
+    try:
+        db.connect()
+        logger.info("Database connection successful.")
 
-    # Drop existing tables
-    logger.info("Dropping existing tables...")
-    db.drop_tables([Weighing, Canister, CanisterType], safe=True)
+        logger.warning("Dropping all tables: Weighing, Canister, CanisterType")
+        db.drop_tables([Weighing, Canister, CanisterType])
+        logger.info("Tables dropped successfully.")
 
-    # Create tables with new schema
-    logger.info("Creating tables with new schema...")
-    db.create_tables([CanisterType, Canister, Weighing])
+        logger.info("Creating all tables...")
+        db.create_tables([CanisterType, Canister, Weighing])
+        logger.info("Tables created successfully.")
 
-    # Seed canister types
-    logger.info("Seeding canister types...")
-    seed_canister_types()
+        # Seed canister types using the refactored seed function
+        seed_canister_types()
 
-    logger.info("Database recreation complete!")
-    db.close()
+        logger.info("Database recreation and seeding process completed successfully!")
+
+    except Exception as e:
+        logger.critical(f"An error occurred during database recreation: {e}", exc_info=True)
+    finally:
+        if not db.is_closed():
+            db.close()
+            logger.info("Database connection closed.")
 
 if __name__ == "__main__":
-    recreate_database()
+    # This confirmation provides a safeguard against accidental execution.
+    confirm = input("Are you sure you want to completely recreate the database? All data will be lost. (yes/no): ")
+    if confirm.lower() == 'yes':
+        recreate_database()
+    else:
+        logger.info("Database recreation aborted by user.")

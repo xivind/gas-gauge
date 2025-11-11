@@ -1,37 +1,24 @@
 from fastapi import APIRouter, HTTPException, Query
-from models import Canister, CanisterType
 from schemas import CanisterCreate, CanisterResponse
 from typing import Optional
-from utils import generate_canister_id
 import logging
+import database_manager as db_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/canisters", tags=["canisters"])
 
 @router.post("", response_model=CanisterResponse)
-def create_canister(canister: CanisterCreate):
-    """Create a new canister"""
+def create_canister_api(canister: CanisterCreate):
+    """Create a new canister via API"""
+    if not canister.label or not canister.label.strip() or len(canister.label) > 64:
+        raise HTTPException(status_code=400, detail="Invalid label")
+    
     try:
-        # Validate label
-        if not canister.label or canister.label.strip() == "":
-            raise HTTPException(status_code=400, detail="Label cannot be empty")
+        # Verify canister type exists by trying to fetch it
+        if not db_manager.get_canister_type_by_id(canister.canister_type_id):
+             raise HTTPException(status_code=404, detail="Canister type not found")
 
-        if len(canister.label) > 64:
-            raise HTTPException(status_code=400, detail="Label cannot exceed 64 characters")
-
-        # Verify canister type exists
-        CanisterType.get_by_id(canister.canister_type_id)
-
-        # Generate UUID-based ID
-        canister_id = generate_canister_id()
-
-        # Create canister with generated ID
-        c = Canister.create(
-            id=canister_id,
-            label=canister.label,
-            canister_type_id=canister.canister_type_id
-        )
-        logger.info(f"Created canister: {c.id} ({c.label})")
+        c = db_manager.create_canister(canister.label, canister.canister_type_id)
         return {
             "id": c.id,
             "label": c.label,
@@ -39,18 +26,16 @@ def create_canister(canister: CanisterCreate):
             "status": c.status,
             "created_at": c.created_at
         }
-    except CanisterType.DoesNotExist:
-        raise HTTPException(status_code=404, detail="Canister type not found")
     except Exception as e:
-        logger.error(f"Error creating canister: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"API Error creating canister: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("", response_model=list[CanisterResponse])
-def list_canisters(status: Optional[str] = Query(None)):
-    """List canisters, optionally filtered by status"""
-    query = Canister.select()
+def list_canisters_api(status: Optional[str] = Query(None)):
+    """List canisters via API, optionally filtered by status"""
+    canisters = db_manager.get_all_canisters()
     if status:
-        query = query.where(Canister.status == status)
+        canisters = [c for c in canisters if c.status == status]
 
     return [{
         "id": c.id,
@@ -58,37 +43,33 @@ def list_canisters(status: Optional[str] = Query(None)):
         "canister_type_id": c.canister_type_id,
         "status": c.status,
         "created_at": c.created_at
-    } for c in query]
+    } for c in canisters]
 
 @router.get("/{canister_id}", response_model=CanisterResponse)
-def get_canister(canister_id: str):  # Changed from int to str
-    """Get a single canister by ID"""
-    try:
-        c = Canister.get_by_id(canister_id)
-        return {
-            "id": c.id,
-            "label": c.label,
-            "canister_type_id": c.canister_type_id,
-            "status": c.status,
-            "created_at": c.created_at
-        }
-    except Canister.DoesNotExist:
+def get_canister_api(canister_id: str):
+    """Get a single canister by ID via API"""
+    canister = db_manager.get_canister_by_id(canister_id)
+    if not canister:
         raise HTTPException(status_code=404, detail="Canister not found")
+    
+    return {
+        "id": canister.id,
+        "label": canister.label,
+        "canister_type_id": canister.canister_type_id,
+        "status": canister.status,
+        "created_at": canister.created_at
+    }
 
 @router.patch("/{canister_id}/status")
-def update_canister_status(canister_id: str, status_update: dict):  # Changed from int to str
-    """Update canister status (active/depleted)"""
-    try:
-        c = Canister.get_by_id(canister_id)
-        new_status = status_update.get("status")
+def update_canister_status_api(canister_id: str, status_update: dict):
+    """Update canister status via API"""
+    new_status = status_update.get("status")
+    if new_status not in ["active", "depleted"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
 
-        if new_status not in ["active", "depleted"]:
-            raise HTTPException(status_code=400, detail="Invalid status")
-
-        c.status = new_status
-        c.save()
-        logger.info(f"Updated canister {c.id} ({c.label}) status to {new_status}")
-
-        return {"success": True}
-    except Canister.DoesNotExist:
+    canister = db_manager.get_canister_by_id(canister_id)
+    if not canister:
         raise HTTPException(status_code=404, detail="Canister not found")
+
+    db_manager.update_canister_status(canister_id, new_status)
+    return {"success": True}
