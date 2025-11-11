@@ -95,8 +95,9 @@ Three main models with computed properties:
    - Computes: gas_capacity
 
 2. **Canister**: Individual physical canisters
-   - Stores: label, type reference, status (active/depleted)
+   - Stores: id (UUID string), label (editable name), type reference, status (active/depleted)
    - Has many: weighings
+   - ID format: GC-{uuid[:6]}{timestamp[-4:]} (e.g., GC-a3f8e52468)
 
 3. **Weighing**: Weight recordings over time
    - Stores: weight, comment, timestamp
@@ -178,18 +179,29 @@ Dashboard displays all canisters with a "Show Depleted" toggle (off by default):
 - `routers/views.py`: `delete_canister()` and `delete_weighing()` routes
 - `templates/canister_detail.html`: Delete buttons with onclick confirmations
 
-### UUID-Based ID Generation
+### UUID-Based Primary Keys
 
-Canister labels use robust unique ID generation instead of sequential numbers:
-- Format: `GC-{uuid[:6]}{timestamp[-4:]}`
-- Example: `GC-a3f8e52468`
-- Combines UUID randomness with timestamp uniqueness
-- Pre-filled in "Add Canister" form as suggested label
-- User can override if desired
+Canisters use UUID-based strings as primary keys instead of auto-incrementing integers:
+- **Format:** `GC-{uuid[:6]}{timestamp[-4:]}`
+- **Example:** `GC-a3f8e52468`
+- **Characteristics:**
+  - Combines UUID randomness with timestamp uniqueness
+  - 13 characters total (3 prefix + 10 random/timestamp)
+  - Used as immutable primary key in database
+
+**Separate Label Field:**
+- User-editable friendly name (1-64 characters, required)
+- Can be non-unique (multiple canisters can have same label)
+- Used for display and searching
+- Editable via canister detail page
 
 **Implementation:**
-- `routers/views.py::generate_unique_id()`: ID generation function
+- `utils.py::generate_canister_id()`: ID generation function
+- `routers/canisters.py::create_canister()`: Generates ID before database insert
 - `routers/views.py::dashboard()`: Passes suggested_label to template
+- `routers/views.py::update_canister_label()`: POST route for label updates
+- `templates/dashboard.html`: Form with label field (suggested value)
+- `templates/canister_detail.html`: Label edit form
 
 ### UI/UX Improvements
 
@@ -224,6 +236,24 @@ cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
 # Development database
 cp -r ./data ./data-backup-$(date +%Y%m%d)
 ```
+
+### Database Recreation (UUID Migration)
+
+To recreate database with UUID-based IDs:
+
+```bash
+# Backup existing database first
+cp -r ./data ./data-backup-$(date +%Y%m%d)
+
+# Recreate tables with new schema
+python recreate_db.py
+```
+
+This will:
+1. Drop all existing tables (Weighing, Canister, CanisterType)
+2. Create tables with new schema (UUID primary keys)
+3. Seed canister types (Coleman 240g, Coleman 450g)
+4. Result: Fresh database with no data
 
 ## Key Design Decisions
 
