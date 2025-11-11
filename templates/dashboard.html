@@ -131,7 +131,7 @@
     const chartData = {
         labels: [{% for cd in canisters %}{% if not cd.is_depleted %}'{{ cd.canister.label }}',{% endif %}{% endfor %}],
         datasets: [{
-            label: 'Remaining Gas (%)',
+            label: 'Remaining Gas (% Wro)',
             data: [{% for cd in canisters %}{% if not cd.is_depleted %}{{ cd.latest_weighing.remaining_percentage if cd.latest_weighing else 0 }},{% endif %}{% endfor %}],
             backgroundColor: [{% for cd in canisters %}{% if not cd.is_depleted %}
                 '{% if cd.status_class == "high" %}rgba(40, 167, 69, 0.7){% elif cd.status_class == "medium" %}rgba(255, 193, 7, 0.7){% else %}rgba(220, 53, 69, 0.7){% endif %}',

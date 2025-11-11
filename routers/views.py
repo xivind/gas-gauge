@@ -62,7 +62,8 @@ def dashboard(request: Request):
 @router.post("/canister/create")
 def create_canister_form(label: str = Form(...), canister_type_id: int = Form(...)):
     """Create canister from form submission"""
-    Canister.create(label=label, canister_type_id=canister_type_id)
+    canister_id = generate_canister_id()
+    Canister.create(id=canister_id, label=label, canister_type_id=canister_type_id)
     return RedirectResponse(url="/", status_code=303)
 
 @router.get("/canister/{canister_id}", response_class=HTMLResponse)
@@ -197,8 +198,7 @@ def admin_types(request: Request):
 def create_type_form(
     name: str = Form(...),
     full_weight: int = Form(...),
-    empty_weight: int = Form(...)
-):
+    empty_weight: int = Form(...)):
     """Create canister type from form submission"""
     CanisterType.create(name=name, full_weight=full_weight, empty_weight=empty_weight)
     return RedirectResponse(url="/admin/types", status_code=303)
