@@ -37,9 +37,11 @@ class Weighing(BaseModel):
     @property
     def remaining_percentage(self):
         capacity = self.canister.canister_type.gas_capacity
-        if capacity == 0:
+        if capacity <= 0:
             return 0
-        return (self.remaining_gas / capacity) * 100
+        # Ensure percentage is not negative and is capped at 100
+        percentage = (self.remaining_gas / capacity) * 100
+        return max(0, min(percentage, 100))
 
     @property
     def consumption_percentage(self):
