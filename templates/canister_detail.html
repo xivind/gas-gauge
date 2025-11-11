@@ -15,9 +15,9 @@
     <div>
         {% if latest_weighing %}
         <div class="percentage-display status-{{ status_class }}">
-            {{ "%.0f"|format(latest_weighing.remaining_percentage) }}%
+            {{ "%.0f"|format(latest_weighing['remaining_percentage']) }}%
         </div>
-        <p class="text-muted text-end">{{ latest_weighing.remaining_gas }}g / {{ canister.canister_type.gas_capacity }}g</p>
+        <p class="text-muted text-end">{{ latest_weighing['remaining_gas'] }}g / {{ (canister_type.full_weight - canister_type.empty_weight) }}g</p>
         {% endif %}
     </div>
 </div>
@@ -92,16 +92,16 @@
         </tr>
     </thead>
     <tbody>
-        {% for weighing in weighings %}
+        {% for w in weighings %}
         <tr>
-            <td>{{ weighing.recorded_at.strftime('%Y-%m-%d') }}</td>
-            <td>{{ weighing.weight }}</td>
-            <td>{{ weighing.remaining_gas }}</td>
-            <td>{{ "%.1f"|format(weighing.remaining_percentage) }}%</td>
-            <td>{{ "%.1f"|format(weighing.consumption_percentage) }}%</td>
-            <td>{{ weighing.comment or '-' }}</td>
+            <td>{{ w['recorded_at'] }}</td>
+            <td>{{ w['weight'] }}</td>
+            <td>{{ w['remaining_gas'] }}</td>
+            <td>{{ "%.1f"|format(w['remaining_percentage']) }}%</td>
+            <td>{{ "%.1f"|format(w['consumption_percentage']) }}%</td>
+            <td>{{ w['comment'] or '-' }}</td>
             <td>
-                <form method="POST" action="/weighing/{{ weighing.id }}/delete" style="display: inline;">
+                <form method="POST" action="/weighing/{{ w['id'] }}/delete" style="display: inline;">
                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this weighing record?')">
                         Delete
                     </button>
@@ -170,9 +170,9 @@
     });
 
     // Get raw data from template
-    const rawGrams = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
-    const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
-    const rawLabels = [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}];
+    const rawGrams = [{% for w in weighings|reverse %}{{ w['remaining_gas'] }},{% endfor %}];
+    const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w['remaining_percentage']) }},{% endfor %}];
+    const rawLabels = [{% for w in weighings|reverse %}'{{ w['recorded_at'] }}',{% endfor %}];
     const n = rawLabels.length;
 
     // Build data points with x-values from 0 to n-1
