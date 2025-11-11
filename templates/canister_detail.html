@@ -230,9 +230,8 @@
                 scales: {
                     x: {
                         type: 'linear',
-                        // Add 0.5 padding on each side for a clean inset look
-                        min: -0.5,
-                        max: n > 1 ? n - 0.5 : 0.5, // Handle single point case
+                        min: 0,
+                        max: n > 0 ? n - 1 : 0,
                         ticks: {
                             // Only show labels for integer values that correspond to data points
                             callback: function(value) {
