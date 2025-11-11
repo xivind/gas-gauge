@@ -124,12 +124,14 @@ Three main models with computed properties:
 
 ### Color Coding Logic
 
-Status classes based on remaining percentage:
-- **high** (green): > 50%
-- **medium** (yellow): 25-50%
-- **low** (red): < 25%
+Status classes based on remaining percentage and measurement state:
+- **high** (green #28a745): > 50%
+- **medium** (yellow #ffc107): 25-50%
+- **low** (red #dc3545): < 25%
+- **none** (gray #6c757d): No measurements recorded yet
+- **depleted** (purple #8b5cf6): Marked as depleted/empty
 
-Implemented in `routers/views.py::get_status_class()`
+Implemented in `routers/views.py::get_status_class()` and styled in `static/css/custom.css`
 
 ### Logging
 

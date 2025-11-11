@@ -34,8 +34,9 @@ def dashboard(request: Request):
                           .order_by(Weighing.recorded_at.desc())
                           .first())
 
-        status_class = "low"
-        if latest_weighing:
+        if not latest_weighing:
+            status_class = "none"  # No measurements yet - gray
+        else:
             status_class = get_status_class(latest_weighing.remaining_percentage)
 
         canister_data.append({
@@ -78,8 +79,9 @@ def canister_detail(request: Request, canister_id: str):
                 .order_by(Weighing.recorded_at.desc()))
 
     latest_weighing = weighings.first() if weighings else None
-    status_class = "low"
-    if latest_weighing:
+    if not latest_weighing:
+        status_class = "none"  # No measurements yet - gray
+    else:
         status_class = get_status_class(latest_weighing.remaining_percentage)
 
     return templates.TemplateResponse("canister_detail.html", {
