@@ -211,7 +211,8 @@
                 },
                 scales: {
                     x: {
-                        offset: true
+                        min: -0.5,
+                        max: {{ weighings|length - 0.5 }}
                     },
                     y: {
                         beginAtZero: true,
