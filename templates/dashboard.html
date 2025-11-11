@@ -36,6 +36,7 @@
                     <span class="badge bg-secondary ms-2">Depleted</span>
                     {% endif %}
                 </h5>
+                <p class="card-text text-muted small">ID: {{ canister_data.canister.id }}</p>
                 <p class="card-text text-muted">{{ canister_data.canister.canister_type.name }}</p>
 
                 {% if canister_data.latest_weighing %}
@@ -73,7 +74,15 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="label" class="form-label">Canister Label</label>
-                        <input type="text" class="form-control" id="label" name="label" value="{{ suggested_label }}" required>
+                        <input type="text"
+                               class="form-control"
+                               id="label"
+                               name="label"
+                               value="{{ suggested_label }}"
+                               placeholder="My Coleman canister"
+                               required
+                               maxlength="64">
+                        <div class="form-text">User-friendly name for this canister (1-64 characters)</div>
                     </div>
                     <div class="mb-3">
                         <label for="canister_type_id" class="form-label">Canister Type</label>
