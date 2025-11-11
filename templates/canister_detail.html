@@ -169,49 +169,28 @@
         fp.setDate(new Date(), false);  // Set to today without closing
     });
 
-    // Create gas over time chart with percentage and very small inset padding
+    // Get raw data from template
     const rawGrams = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
     const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
     const rawLabels = [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}];
 
-    const n = rawPercentages.length;
-    // Slight inset fraction (2%); increases space at both ends
-    const insetFraction = 0.02;
-    const leftX = 1 - insetFraction;
-    const rightX = n + insetFraction;
-
-    // Build data points only for real measurements (x positions 1..n)
-    const dataPoints = [];
-    for (let i = 0; i < n; i++) {
-        dataPoints.push({
-            x: i + 1,
-            y: Number(rawPercentages[i]),
-            grams: rawGrams[i],
-            label: rawLabels[i] // Pass the date label into the data point
-        });
-    }
+    // Add padding for visual inset on a category axis
+    // One empty label and null data point at the beginning and end
+    const paddedLabels = ['', ...rawLabels, ''];
+    const paddedPercentages = [null, ...rawPercentages.map(Number), null];
+    const paddedGrams = [null, ...rawGrams, null];
 
     const chartData = {
+        labels: paddedLabels, // Use padded labels for the x-axis
         datasets: [{
             label: 'Remaining Gas (%)',
-            data: dataPoints,
+            data: paddedPercentages, // Use padded data
+            grams: paddedGrams,      // Store grams here for the tooltip
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            // Don't draw a connecting line if there's only one real data point
-            showLine: (n > 1),
             tension: 0.1,
             pointRadius: 3,
-            pointHoverRadius: 5,
-            // Avoid drawing segments that would connect beyond real data points
-            segment: {
-                // draw segment only if both endpoints are real data points (x integer between 1..n)
-                borderColor: function(ctx) {
-                    const p0 = ctx.p0 && ctx.p0.parsed ? ctx.p0.parsed.x : (ctx.p0 && ctx.p0.raw ? ctx.p0.raw.x : null);
-                    const p1 = ctx.p1 && ctx.p1.parsed ? ctx.p1.parsed.x : (ctx.p1 && ctx.p1.raw ? ctx.p1.raw.x : null);
-                    const isIntegerInRange = (v) => Number.isInteger(v) && v >= 1 && v <= n;
-                    return (isIntegerInRange(p0) && isIntegerInRange(p1)) ? 'rgb(75, 192, 192)' : 'transparent';
-                }
-            }
+            pointHoverRadius: 5
         }]
     };
 
@@ -233,13 +212,20 @@
                         callbacks: {
                             // Display the date as the tooltip title
                             title: function(context) {
-                                const point = context[0];
-                                return point.raw.label || '';
+                                return context[0].label || '';
                             },
                             label: function(context) {
-                                const percentage = context.raw.y;
+                                const percentage = context.parsed.y;
+                                // Retrieve grams from our custom dataset property
+                                const grams = context.dataset.grams[context.dataIndex];
+
                                 const p = (typeof percentage === 'number') ? percentage.toFixed(1) : percentage;
-                                const grams = context.raw.grams;
+
+                                // Don't show the label if grams is not available (for the padded points)
+                                if (typeof grams === 'undefined' || grams === null) {
+                                    return null;
+                                }
+
                                 return `${p}% (${grams}g remaining)`;
                             }
                         }
@@ -247,21 +233,7 @@
                 },
                 scales: {
                     x: {
-                        type: 'linear',
-                        min: leftX,
-                        max: rightX,
-                        ticks: {
-                            stepSize: 1,
-                            callback: function(value) {
-                                // value may be a fractional tick when axis min/max are insetFraction off integers.
-                                // Accept values very close to integers and map them to labels.
-                                const rounded = Math.round(value);
-                                if (Math.abs(value - rounded) < 0.001 && rounded >= 1 && rounded <= n) {
-                                    return rawLabels[rounded - 1];
-                                }
-                                return '';
-                            }
-                        }
+                        type: 'category' // Use category scale for discrete labels (dates)
                     },
                     y: {
                         beginAtZero: true,
