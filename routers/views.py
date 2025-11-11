@@ -34,8 +34,9 @@ def dashboard(request: Request):
                           .order_by(Weighing.recorded_at.desc())
                           .first())
 
-        status_class = "low"
-        if latest_weighing:
+        if not latest_weighing:
+            status_class = "none"  # No measurements yet - gray
+        else:
             status_class = get_status_class(latest_weighing.remaining_percentage)
 
         canister_data.append({
@@ -48,8 +49,8 @@ def dashboard(request: Request):
     # Sort canisters: active first, then depleted
     canister_data.sort(key=lambda x: (x["is_depleted"], x["canister"].label))
 
-    # Generate suggested label for new canister
-    suggested_label = generate_canister_id()
+    # Generate suggested label for new canister (trimmed for user display)
+    suggested_label = generate_canister_id()[:7]  # GC- + first 4 chars only
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
@@ -78,8 +79,9 @@ def canister_detail(request: Request, canister_id: str):
                 .order_by(Weighing.recorded_at.desc()))
 
     latest_weighing = weighings.first() if weighings else None
-    status_class = "low"
-    if latest_weighing:
+    if not latest_weighing:
+        status_class = "none"  # No measurements yet - gray
+    else:
         status_class = get_status_class(latest_weighing.remaining_percentage)
 
     return templates.TemplateResponse("canister_detail.html", {
@@ -100,12 +102,18 @@ def add_weighing_form(
     """Add weighing from form submission"""
     # Parse date string (format: YYYY-MM-DD)
     recorded_datetime = datetime.strptime(recorded_at, "%Y-%m-%d")
-    Weighing.create(
-        canister_id=canister_id,
+
+    # Get the canister object
+    canister = Canister.get_by_id(canister_id)
+
+    # Create weighing with canister object (not canister_id)
+    weighing = Weighing.create(
+        canister=canister,
         weight=weight,
         recorded_at=recorded_datetime,
         comment=comment
     )
+    logger.info(f"Created weighing {weighing.id} for canister {canister.id} ({canister.label}): {weight}g")
     return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
 
 @router.post("/canister/{canister_id}/mark-depleted")

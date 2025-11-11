@@ -141,7 +141,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="recorded_at" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="recorded_at" name="recorded_at" required>
+                        <input type="text" class="form-control" id="recorded_at" name="recorded_at" placeholder="YYYY-MM-DD" required>
                     </div>
                     <div class="mb-3">
                         <label for="comment" class="form-label">Comment (optional)</label>
@@ -161,30 +161,74 @@
 {% block scripts %}
 <script src="/static/js/charts.js"></script>
 <script>
-    // Set default date to today when modal opens
-    const addWeighingModal = document.getElementById('addWeighingModal');
-    addWeighingModal.addEventListener('show.bs.modal', function () {
-        const now = new Date();
-        // Format: YYYY-MM-DD
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const date = `${year}-${month}-${day}`;
-        document.getElementById('recorded_at').value = date;
+    // Initialize Flatpickr with YYYY-MM-DD format
+    const dateInput = document.getElementById('recorded_at');
+    const fp = flatpickr(dateInput, {
+        dateFormat: "Y-m-d",  // YYYY-MM-DD format
+        defaultDate: "today",
+        allowInput: true,     // Allow manual typing
+        disableMobile: true   // Use Flatpickr on mobile too (not native picker)
     });
 
-    // Create gas over time chart
+    // Reset date to today when modal opens
+    const addWeighingModal = document.getElementById('addWeighingModal');
+    addWeighingModal.addEventListener('show.bs.modal', function () {
+        fp.setDate(new Date(), false);  // Set to today without closing
+    });
+
+    // Create gas over time chart with percentage
+    const gramsData = [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}];
+    const percentageData = [{% for w in weighings|reverse %}{{ "%.1f"|format(w.remaining_percentage) }},{% endfor %}];
+
     const chartData = {
         labels: [{% for w in weighings|reverse %}'{{ w.recorded_at.strftime('%Y-%m-%d') }}',{% endfor %}],
         datasets: [{
-            label: 'Remaining Gas (g)',
-            data: [{% for w in weighings|reverse %}{{ w.remaining_gas }},{% endfor %}],
+            label: 'Remaining Gas (%)',
+            data: percentageData,
+            grams: gramsData,  // Store grams for tooltip
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
             tension: 0.1
         }]
     };
 
-    createLineChart('gasOverTimeChart', chartData, 'Gas Remaining Over Time');
+    // Create chart with custom tooltip showing both percentage and grams
+    const ctx = document.getElementById('gasOverTimeChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Gas Remaining Over Time (%)'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const percentage = context.parsed.y.toFixed(1);
+                                const grams = context.dataset.grams[context.dataIndex];
+                                return `${percentage}% (${grams}g remaining)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 </script>
 {% endblock %}

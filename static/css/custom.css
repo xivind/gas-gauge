@@ -31,6 +31,14 @@
     color: #dc3545;
 }
 
+.status-none {
+    color: #6c757d;
+}
+
+.status-depleted {
+    color: #8b5cf6;
+}
+
 .card-status-high {
     border-left: 5px solid #28a745;
 }
@@ -43,9 +51,13 @@
     border-left: 5px solid #dc3545;
 }
 
+.card-status-none {
+    border-left: 5px solid #6c757d;
+}
+
 .card-depleted {
     opacity: 0.7;
-    border-left: 5px solid #6c757d;
+    border-left: 5px solid #8b5cf6;
 }
 
 /* Chart containers */
@@ -62,4 +74,18 @@
 
 .weighing-table th {
     background-color: #f8f9fa;
+}
+
+/* Flatpickr date picker styling */
+.flatpickr-calendar {
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+
+.flatpickr-day.today {
+    border-color: #0d6efd;
+}
+
+.flatpickr-day.selected {
+    background: #0d6efd;
+    border-color: #0d6efd;
 }
