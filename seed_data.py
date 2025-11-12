@@ -1,5 +1,5 @@
 import logging
-import database_manager as db_manager
+from database_manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -10,10 +10,10 @@ PREDEFINED_TYPES = [
 def seed_canister_types():
     """Seed database with predefined canister types using the database manager."""
     logger.info("Seeding predefined canister types...")
+    db_manager = DatabaseManager()
+
     for type_data in PREDEFINED_TYPES:
-        db_manager.create_canister_type(
-            name=type_data["name"],
-            full_weight=type_data["full_weight"],
-            empty_weight=type_data["empty_weight"]
-        )
+        success, message = db_manager.write_canister_type(type_data)
+        logger.info(message)
+
     logger.info("Canister type seeding complete.")
