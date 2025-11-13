@@ -13,10 +13,10 @@ COPY . .
 RUN mkdir -p /app/data
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8003
 
 # Run application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--log-config", "uvicorn_log_config.ini"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003", "--log-config", "uvicorn_log_config.ini"]
 
 # Healthcheck to monitor the container for errors
 HEALTHCHECK --interval=600s --retries=1 --timeout=3s CMD grep -q "error" status.txt && exit 1 || exit 0
