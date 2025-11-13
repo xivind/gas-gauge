@@ -146,11 +146,6 @@ class BusinessLogic:
             "status_class": status_class
         }
 
-    def get_admin_types_data(self):
-        """Get all data for admin types page"""
-        canister_types = self.db_manager.read_all_canister_types()
-        return {"canister_types": canister_types}
-
     # ========== Create Operations ==========
 
     def create_canister(self, label, canister_type_id):

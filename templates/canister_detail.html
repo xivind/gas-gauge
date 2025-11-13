@@ -152,7 +152,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/charts.js"></script>
 <script>
     // Initialize Flatpickr with YYYY-MM-DD format
     const dateInput = document.getElementById('recorded_at');
@@ -169,40 +168,62 @@
         fp.setDate(new Date(), false);  // Set to today without closing
     });
 
-    // Get raw data from template
+    // Get raw data from template (oldest to newest)
     const rawGrams = [{% for w in weighings|reverse %}{{ w['remaining_gas'] }},{% endfor %}];
-    const rawPercentages = [{% for w in weighings|reverse %}{{ "%.1f"|format(w['remaining_percentage']) }},{% endfor %}];
     const rawLabels = [{% for w in weighings|reverse %}'{{ w['recorded_at'] }}',{% endfor %}];
+    const gasCapacity = {{ canister_type.full_weight - canister_type.empty_weight }};
     const n = rawLabels.length;
 
-    // Build data points with x-values from 0 to n-1
-    const dataPoints = [];
-    for (let i = 0; i < n; i++) {
-        dataPoints.push({
-            x: i,
-            y: Number(rawPercentages[i]),
-            grams: rawGrams[i],
-            label: rawLabels[i] // Keep the label inside the point for the tooltip
-        });
+    // Calculate consumption between each weighing
+    const consumptionData = [];
+    const consumptionLabels = [];
+    const colors = [
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(255, 206, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 159, 64, 0.7)',
+        'rgba(199, 199, 199, 0.7)',
+        'rgba(83, 102, 255, 0.7)',
+        'rgba(255, 99, 255, 0.7)',
+        'rgba(99, 255, 132, 0.7)'
+    ];
+
+    if (n > 0) {
+        // First slice: initial consumption from full canister to first weighing
+        const initialConsumption = gasCapacity - rawGrams[0];
+        if (initialConsumption > 0) {
+            consumptionData.push(initialConsumption);
+            consumptionLabels.push(rawLabels[0]);
+        }
+
+        // Subsequent slices: consumption between weighings
+        for (let i = 1; i < n; i++) {
+            const consumed = rawGrams[i - 1] - rawGrams[i];
+            if (consumed > 0) {
+                consumptionData.push(consumed);
+                consumptionLabels.push(rawLabels[i]);
+            }
+        }
     }
 
     const chartData = {
+        labels: consumptionLabels,
         datasets: [{
-            label: 'Remaining Gas (%)',
-            data: dataPoints,
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.1,
-            pointRadius: 3,
-            pointHoverRadius: 5
+            label: 'Gas Consumed (g)',
+            data: consumptionData,
+            backgroundColor: colors.slice(0, consumptionData.length),
+            borderColor: colors.slice(0, consumptionData.length).map(c => c.replace('0.7', '1')),
+            borderWidth: 1
         }]
     };
 
-    // Create chart
+    // Create pie chart
     const ctx = document.getElementById('gasOverTimeChart');
-    if (ctx && n > 0) { // Only render chart if there is data
+    if (ctx && consumptionData.length > 0) {
         new Chart(ctx, {
-            type: 'line',
+            type: 'pie',
             data: chartData,
             options: {
                 responsive: true,
@@ -210,54 +231,23 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Gas Remaining Over Time (%)'
+                        text: 'Gas Consumption'
                     },
                     tooltip: {
                         callbacks: {
-                            // Display the date as the tooltip title from the raw data point
-                            title: function(context) {
-                                return context[0]?.raw?.label || '';
-                            },
                             label: function(context) {
-                                const y = context.parsed.y;
-                                const grams = context.raw.grams;
-                                const p = (typeof y === 'number') ? y.toFixed(1) : y;
-                                return `${p}% (${grams}g remaining)`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        type: 'linear',
-                        min: 0,
-                        max: n > 0 ? n - 1 : 0,
-                        ticks: {
-                            // Only show labels for integer values that correspond to data points
-                            callback: function(value) {
-                                if (Number.isInteger(value) && value >= 0 && value < n) {
-                                    return rawLabels[value];
-                                }
-                                return ''; // No label for other auto-generated ticks
-                            }
-                        },
-                        grid: {
-                            // Only draw grid lines for ticks that are actual data points
-                            color: function(context) {
-                                if (context.tick && Number.isInteger(context.tick.value) && context.tick.value >= 0 && context.tick.value < n) {
-                                    // Default grid color for data points
-                                    return 'rgba(0, 0, 0, 0.1)';
-                                }
-                                // No grid lines for padded areas or other ticks
-                                return 'transparent';
+                                const consumed = context.parsed;
+                                const total = consumptionData.reduce((a, b) => a + b, 0);
+                                const percentage = ((consumed / total) * 100).toFixed(1);
+                                return `${consumed}g (${percentage}% of total consumption)`;
                             }
                         }
                     },
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: {
-                            callback: function(value) { return value + '%'; }
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15
                         }
                     }
                 }

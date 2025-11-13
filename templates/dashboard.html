@@ -16,12 +16,16 @@
     </div>
 </div>
 
-{% if canisters %}
-<!-- Overview Chart -->
-<div class="chart-container mb-4">
-    <canvas id="overviewChart"></canvas>
+<!-- Info box for no active canisters -->
+{% set active_count = canisters|selectattr('is_depleted', 'equalto', False)|list|length if canisters else 0 %}
+{% if active_count == 0 %}
+<div class="alert alert-info" id="noActiveCanisters">
+    <h5 class="alert-heading">Welcome to Gas Gauge!</h5>
+    <p class="mb-0">{% if canisters %}You don't have any active canisters. {% endif %}Click the "Add New Canister" button above to start tracking your gas canisters.</p>
 </div>
+{% endif %}
 
+{% if canisters %}
 <!-- Canister Cards -->
 <div class="row">
     {% for cd in canisters %}
@@ -55,10 +59,6 @@
         </div>
     </div>
     {% endfor %}
-</div>
-{% else %}
-<div class="alert alert-info">
-    No active canisters. Click "Add New Canister" to get started.
 </div>
 {% endif %}
 
@@ -104,7 +104,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/charts.js"></script>
 <script>
     // Initialize TomSelect for canister type dropdown
     new TomSelect('#canister_type_id', {
@@ -114,31 +113,25 @@
     // Toggle depleted canisters visibility
     const toggleCheckbox = document.getElementById('showDepletedToggle');
     const depletedCanisters = document.querySelectorAll('.depleted-canister');
+    const infoBox = document.getElementById('noActiveCanisters');
 
-    // Hide depleted canisters by default
-    depletedCanisters.forEach(canister => {
-        canister.style.display = 'none';
-    });
+    // Function to update visibility based on toggle state
+    function updateVisibility() {
+        const isChecked = toggleCheckbox.checked;
+
+        depletedCanisters.forEach(canister => {
+            canister.style.display = isChecked ? '' : 'none';
+        });
+
+        if (infoBox) {
+            infoBox.style.display = isChecked ? 'none' : '';
+        }
+    }
+
+    // Initialize visibility on page load
+    updateVisibility();
 
     // Toggle visibility when checkbox changes
-    toggleCheckbox.addEventListener('change', function() {
-        depletedCanisters.forEach(canister => {
-            canister.style.display = this.checked ? '' : 'none';
-        });
-    });
-
-    // Create overview chart (only active canisters)
-    const chartData = {
-        labels: [{% for cd in canisters %}{% if not cd['is_depleted'] %}'{{ cd['canister'].label }}',{% endif %}{% endfor %}],
-        datasets: [{
-            label: 'Remaining Gas (%)',
-            data: [{% for cd in canisters %}{% if not cd['is_depleted'] %}{{ cd['remaining_percentage'] if cd['remaining_percentage'] is not none else 0 }},{% endif %}{% endfor %}],
-            backgroundColor: [{% for cd in canisters %}{% if not cd['is_depleted'] %}
-                '{% if cd['status_class'] == "high" %}rgba(40, 167, 69, 0.7){% elif cd['status_class'] == "medium" %}rgba(255, 193, 7, 0.7){% else %}rgba(220, 53, 69, 0.7){% endif %}',
-            {% endif %}{% endfor %}]
-        }]
-    };
-
-    createBarChart('overviewChart', chartData, 'Active Canisters Overview');
+    toggleCheckbox.addEventListener('change', updateVisibility);
 </script>
 {% endblock %}
