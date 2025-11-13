@@ -6,9 +6,14 @@
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center">
         <h1>Canisters</h1>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCanisterModal">
-            Add New Canister
-        </button>
+        <div>
+            <button class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#cheatSheetTypeModal">
+                CheatSheets
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCanisterModal">
+                Add New Canister
+            </button>
+        </div>
     </div>
     <div class="form-check form-switch mt-2">
         <input class="form-check-input" type="checkbox" id="showDepletedToggle">
@@ -101,6 +106,64 @@
         </div>
     </div>
 </div>
+
+<!-- CheatSheet Type Selection Modal -->
+<div class="modal fade" id="cheatSheetTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Canister Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="cheatsheet_type_select" class="form-label">Choose a canister type to view its cheatsheet:</label>
+                    <select class="form-select" id="cheatsheet_type_select">
+                        <option value="">Select canister type...</option>
+                        {% for ct in canister_types %}
+                        <option value="{{ ct.id }}"
+                                data-name="{{ ct.name }}"
+                                data-full="{{ ct.full_weight }}"
+                                data-empty="{{ ct.empty_weight }}">
+                            {{ ct.name }} ({{ ct.full_weight - ct.empty_weight }}g capacity)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="viewCheatSheetBtn">View CheatSheet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CheatSheet Display Modal -->
+<div class="modal fade" id="cheatSheetModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content cheatsheet-modal">
+            <div class="modal-header">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="/static/gas_gauge.png" alt="Gas Gauge Logo" class="cheatsheet-logo">
+                <h4 id="cheatsheet-title" class="mb-4"></h4>
+                <table class="table table-bordered cheatsheet-table" id="cheatsheet-table">
+                    <thead>
+                        <tr>
+                            <th>Weight Range</th>
+                            <th>Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cheatsheet-tbody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -133,5 +196,65 @@
 
     // Toggle visibility when checkbox changes
     toggleCheckbox.addEventListener('change', updateVisibility);
+
+    // CheatSheet functionality
+    const cheatSheetTypeModal = new bootstrap.Modal(document.getElementById('cheatSheetTypeModal'));
+    const cheatSheetModal = new bootstrap.Modal(document.getElementById('cheatSheetModal'));
+    const viewCheatSheetBtn = document.getElementById('viewCheatSheetBtn');
+    const cheatSheetTypeSelect = document.getElementById('cheatsheet_type_select');
+
+    // Initialize TomSelect for cheatsheet type selection
+    const cheatSheetTomSelect = new TomSelect('#cheatsheet_type_select', {
+        placeholder: 'Select canister type...',
+    });
+
+    viewCheatSheetBtn.addEventListener('click', async function() {
+        const selectedTypeId = cheatSheetTomSelect.getValue();
+
+        if (!selectedTypeId) {
+            alert('Please select a canister type');
+            return;
+        }
+
+        try {
+            // Fetch cheatsheet data from API
+            const response = await fetch(`/api/cheatsheet/${selectedTypeId}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch cheatsheet data');
+            }
+
+            const data = await response.json();
+
+            // Update cheatsheet modal title
+            document.getElementById('cheatsheet-title').textContent = `${data.name} Cheatsheet`;
+
+            // Populate table rows
+            const tbody = document.getElementById('cheatsheet-tbody');
+            tbody.innerHTML = '';
+
+            data.rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = `cheatsheet-row-${row.color_class}`;
+                tr.innerHTML = `
+                    <td class="fw-bold">${row.weight_range}</td>
+                    <td class="fw-bold">${row.percent_range}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Hide type selection modal and show cheatsheet modal
+            cheatSheetTypeModal.hide();
+            cheatSheetModal.show();
+
+        } catch (error) {
+            console.error('Error fetching cheatsheet:', error);
+            alert('Failed to load cheatsheet. Please try again.');
+        }
+    });
+
+    // Reset TomSelect when type modal is closed
+    document.getElementById('cheatSheetTypeModal').addEventListener('hidden.bs.modal', function() {
+        cheatSheetTomSelect.clear();
+    });
 </script>
 {% endblock %}

@@ -200,11 +200,53 @@ def delete_type_form(type_id: int):
         raise HTTPException(status_code=400, detail=message)
     return RedirectResponse(url="/admin/types", status_code=303)
 
+# ==================== API ENDPOINTS ====================
+
+@app.get("/api/cheatsheet/{type_id}")
+def get_cheatsheet(type_id: int):
+    """Get cheatsheet data for a canister type"""
+    canister_type = business_logic.db_manager.read_canister_type_by_id(type_id)
+    if not canister_type:
+        raise HTTPException(status_code=404, detail="Canister type not found")
+
+    gas_capacity = business_logic.calculate_gas_capacity(
+        canister_type.full_weight,
+        canister_type.empty_weight
+    )
+
+    # Define percentage bands and their color classes
+    bands = [
+        {"percent_range": "100-80%", "percent_top": 1.0, "percent_bottom": 0.8, "color_class": "high"},
+        {"percent_range": "79-60%", "percent_top": 0.79, "percent_bottom": 0.6, "color_class": "medium"},
+        {"percent_range": "59-40%", "percent_top": 0.59, "percent_bottom": 0.4, "color_class": "medium"},
+        {"percent_range": "39-20%", "percent_top": 0.39, "percent_bottom": 0.2, "color_class": "low"},
+        {"percent_range": "19-0%", "percent_top": 0.19, "percent_bottom": 0.0, "color_class": "low"},
+    ]
+
+    rows = []
+    for band in bands:
+        weight_top = int(canister_type.empty_weight + (gas_capacity * band["percent_top"]))
+        weight_bottom = int(canister_type.empty_weight + (gas_capacity * band["percent_bottom"]))
+
+        rows.append({
+            "weight_range": f"{weight_top}g - {weight_bottom}g",
+            "percent_range": band["percent_range"],
+            "color_class": band["color_class"]
+        })
+
+    return {
+        "name": canister_type.name,
+        "full_weight": canister_type.full_weight,
+        "empty_weight": canister_type.empty_weight,
+        "gas_capacity": gas_capacity,
+        "rows": rows
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8000,
+        port=8003,
         log_config="uvicorn_log_config.ini"
     )
