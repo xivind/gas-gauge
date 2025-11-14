@@ -1,3 +1,5 @@
+# Helpers for gas gauge application
+
 import uuid
 from datetime import datetime
 

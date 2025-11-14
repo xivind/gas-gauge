@@ -1,3 +1,5 @@
+# Module to seed the database with predefined canister types
+
 import logging
 from database_manager import DatabaseManager
 
