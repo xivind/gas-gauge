@@ -23,45 +23,43 @@
 </div>
 
 <!-- Edit Label Section -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">Edit Label</h5>
-        <form action="/canister/{{ canister.id }}/update-label" method="post" class="row g-3">
-            <div class="col-auto">
-                <input type="text"
-                       class="form-control"
-                       name="label"
-                       value="{{ canister.label }}"
-                       required
-                       maxlength="64"
-                       placeholder="Canister label">
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary">Update Label</button>
-            </div>
-        </form>
-    </div>
+<div class="mb-4">
+    <h5>Edit Label</h5>
+    <form action="/canister/{{ canister.id }}/update-label" method="post" class="row g-3">
+        <div class="col-auto">
+            <input type="text"
+                   class="form-control"
+                   name="label"
+                   value="{{ canister.label }}"
+                   required
+                   maxlength="64"
+                   placeholder="Canister label">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Update Label</button>
+        </div>
+    </form>
 </div>
 
 <div class="mb-4">
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addWeighingModal">
+    <button class="btn btn-primary me-2 mb-2" data-bs-toggle="modal" data-bs-target="#addWeighingModal">
         Add Weighing
     </button>
     {% if canister.status == "active" %}
     <form method="POST" action="/canister/{{ canister.id }}/mark-depleted" style="display: inline;">
-        <button type="submit" class="btn btn-warning" onclick="return confirm('Mark this canister as depleted?')">
+        <button type="submit" class="btn btn-warning me-2 mb-2" onclick="return confirm('Mark this canister as depleted?')">
             Mark as Depleted
         </button>
     </form>
     {% else %}
     <form method="POST" action="/canister/{{ canister.id }}/reactivate" style="display: inline;">
-        <button type="submit" class="btn btn-success">
+        <button type="submit" class="btn btn-success me-2 mb-2">
             Reactivate
         </button>
     </form>
     {% endif %}
     <form method="POST" action="/canister/{{ canister.id }}/delete" style="display: inline;">
-        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this canister? This will also delete all weighing records. This action cannot be undone.')">
+        <button type="submit" class="btn btn-danger mb-2" onclick="return confirm('Are you sure you want to delete this canister? This will also delete all weighing records. This action cannot be undone.')">
             Delete Canister
         </button>
     </form>
@@ -79,6 +77,7 @@
 
 <!-- Weighing History Table -->
 <h3>Weighing History</h3>
+<div class="table-responsive">
 <table class="table table-striped weighing-table">
     <thead>
         <tr>
@@ -111,6 +110,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% else %}
 <div class="alert alert-info">
     No weighings recorded yet. Click "Add Weighing" to get started.

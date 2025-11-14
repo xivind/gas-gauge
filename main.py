@@ -74,11 +74,11 @@ def canister_detail(request: Request, canister_id: str):
         **payload
     })
 
-@app.get("/admin/types", response_class=HTMLResponse)
-def admin_types(request: Request):
-    """Admin page for managing canister types"""
+@app.get("/types", response_class=HTMLResponse)
+def types_page(request: Request):
+    """Page for managing canister types"""
     canister_types = business_logic.db_manager.read_all_canister_types()
-    return templates.TemplateResponse("admin/types.html", {
+    return templates.TemplateResponse("types.html", {
         "request": request,
         "canister_types": canister_types
     })
@@ -174,7 +174,7 @@ def delete_weighing_route(weighing_id: int):
         return RedirectResponse(url=f"/canister/{canister_id}", status_code=303)
     return RedirectResponse(url="/", status_code=303)
 
-@app.post("/admin/types/create")
+@app.post("/types/create")
 def create_type_form(
     name: str = Form(...),
     full_weight: int = Form(...),
@@ -190,15 +190,15 @@ def create_type_form(
     if not success:
         raise HTTPException(status_code=400, detail=message)
 
-    return RedirectResponse(url="/admin/types", status_code=303)
+    return RedirectResponse(url="/types", status_code=303)
 
-@app.post("/admin/types/{type_id}/delete")
+@app.post("/types/{type_id}/delete")
 def delete_type_form(type_id: int):
     """Delete canister type"""
     success, message = business_logic.db_manager.delete_canister_type(type_id)
     if not success:
         raise HTTPException(status_code=400, detail=message)
-    return RedirectResponse(url="/admin/types", status_code=303)
+    return RedirectResponse(url="/types", status_code=303)
 
 # ==================== API ENDPOINTS ====================
 
@@ -247,6 +247,5 @@ if __name__ == "__main__":
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8003,
         log_config="uvicorn_log_config.ini"
     )

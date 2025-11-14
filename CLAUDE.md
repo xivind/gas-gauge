@@ -19,7 +19,7 @@ Gas Gauge is a web application to track remaining gas in canisters for camp stov
 
 **Using deploy.sh script (recommended):**
 ```bash
-./deploy.sh
+./create-container-gasgauge.sh
 ```
 
 The deploy.sh script handles complete deployment lifecycle:
@@ -41,7 +41,7 @@ docker run -d \
   -e TZ=Europe/Stockholm \
   -v ~/code/container_data:/app/data \
   --restart unless-stopped \
-  -p 8000:8000 \
+  -p 8003:8003 \
   gas-gauge
 
 # View logs
@@ -65,7 +65,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --log-config uvicorn_log_config.ini
 
 # Run for production
-uvicorn main:app --host 0.0.0.0 --port 8000 --log-config uvicorn_log_config.ini
+uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
 ```
 
 ### Testing
@@ -103,19 +103,35 @@ Three main models with computed properties:
    - Stores: weight, comment, timestamp
    - Computes: remaining_gas, remaining_percentage, consumption_percentage
 
-### Router Structure
+### Application Structure
 
-- `routers/canister_types.py`: API for managing canister types
-- `routers/canisters.py`: API for canister CRUD
-- `routers/weighings.py`: API for recording weighings
-- `routers/views.py`: HTML views (dashboard, detail, admin) with deletion routes
+All routes are consolidated in `main.py` - **13 total endpoints**:
+
+**HTML Views (3 GET routes):**
+- `/` - Dashboard with all canisters
+- `/canister/{canister_id}` - Individual canister detail page
+- `/types` - Canister types management page
+
+**Form Submissions (9 POST routes):**
+- `/canister/create` - Create new canister
+- `/canister/{canister_id}/add-weighing` - Add weighing record
+- `/canister/{canister_id}/mark-depleted` - Mark canister as depleted
+- `/canister/{canister_id}/reactivate` - Reactivate depleted canister
+- `/canister/{canister_id}/delete` - Delete canister (cascade)
+- `/canister/{canister_id}/update-label` - Update canister label
+- `/weighing/{weighing_id}/delete` - Delete weighing record
+- `/types/create` - Create canister type
+- `/types/{type_id}/delete` - Delete canister type
+
+**API Endpoints (1 GET route):**
+- `/api/cheatsheet/{type_id}` - Returns weight range data for cheatsheet modal
 
 ### Frontend Organization
 
-- `templates/base.html`: Base template with Bootstrap, Chart.js, TomSelect, Flatpickr, navbar with logo
-- `templates/dashboard.html`: All canisters with "Show Depleted" toggle and overview chart
-- `templates/canister_detail.html`: Individual canister with history, charts, deletion, and date picker
-- `templates/admin/types.html`: Manage canister types
+- `templates/base.html`: Base template with Bootstrap 5, Chart.js, TomSelect, Flatpickr, navbar with logo
+- `templates/dashboard.html`: All canisters with "Show Depleted" toggle, CheatSheets button, and pie charts
+- `templates/canister_detail.html`: Individual canister with history, pie charts, deletion, and date picker
+- `templates/types.html`: Manage canister types with table-responsive layout
 - `static/css/custom.css`: Color-coded status indicators, navbar styling, and Flatpickr theme
 - `static/js/charts.js`: Chart.js helper functions
 - `static/js/app.js`: Form handling and utilities
@@ -148,6 +164,20 @@ Unified logging configuration for both FastAPI/uvicorn and application logs:
 
 ## Key Features
 
+### CheatSheets (Field Reference)
+
+Generate printable reference tables showing weight-to-percentage mappings for field use without app access:
+- Button on dashboard opens canister type selection modal
+- Second modal displays color-coded reference table with logo
+- Shows 5 weight range bands: 100-80%, 79-60%, 59-40%, 39-20%, 19-0%
+- Optimized for phone screenshots (compact layout, no scrolling needed)
+- Color-coded rows match dashboard (green/yellow/red)
+
+**Implementation:**
+- `main.py:205`: API endpoint `GET /api/cheatsheet/{type_id}` calculates weight ranges
+- `templates/dashboard.html`: Two modals (type selection + cheatsheet display)
+- `static/css/custom.css`: Cheatsheet-specific styling with color-coded rows
+
 ### Show Depleted Toggle
 
 Dashboard displays all canisters with a "Show Depleted" toggle (off by default):
@@ -159,7 +189,7 @@ Dashboard displays all canisters with a "Show Depleted" toggle (off by default):
 
 **Implementation:**
 - `templates/dashboard.html`: Form switch and JavaScript toggle logic
-- `routers/views.py::dashboard()`: Fetches all canisters, marks depleted status
+- `business_logic.py::get_dashboard_data()`: Fetches all canisters, marks depleted status
 - Sorting: `canister_data.sort(key=lambda x: (x["is_depleted"], x["canister"].label))`
 
 ### Deletion Functionality
@@ -178,7 +208,8 @@ Dashboard displays all canisters with a "Show Depleted" toggle (off by default):
 - Redirects back to canister detail page
 
 **Implementation:**
-- `routers/views.py`: `delete_canister()` and `delete_weighing()` routes
+- `main.py`: `delete_canister_route()` and `delete_weighing_route()`
+- `database_manager.py`: Cascade delete logic
 - `templates/canister_detail.html`: Delete buttons with onclick confirmations
 
 ### UUID-Based Primary Keys
@@ -198,10 +229,10 @@ Canisters use UUID-based strings as primary keys instead of auto-incrementing in
 - Editable via canister detail page
 
 **Implementation:**
-- `utils.py::generate_canister_id()`: ID generation function
-- `routers/canisters.py::create_canister()`: Generates ID before database insert
-- `routers/views.py::dashboard()`: Passes suggested_label to template
-- `routers/views.py::update_canister_label()`: POST route for label updates
+- `utils.py::generate_canister_id()`: ID generation function using uuid4() + timestamp
+- `business_logic.py::create_canister()`: Generates ID before database insert
+- `business_logic.py::get_dashboard_data()`: Passes suggested_label to template
+- `main.py::update_canister_label_route()`: POST route for label updates
 - `templates/dashboard.html`: Form with label field (suggested value)
 - `templates/canister_detail.html`: Label edit form
 
@@ -228,7 +259,8 @@ Canisters use UUID-based strings as primary keys instead of auto-incrementing in
 
 ### Initialization
 - Tables created automatically on first run
-- Seed data (Coleman types) populated by `seed_data.py`
+- Seed data (Coleman 240g) populated by `seed_data.py`
+- Protected types cannot be deleted through UI
 
 ### Backup
 ```bash
@@ -239,23 +271,28 @@ cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
 cp -r ./data ./data-backup-$(date +%Y%m%d)
 ```
 
-### Database Recreation (UUID Migration)
+### Database Management
 
-To recreate database with UUID-based IDs:
-
+**Backup:**
 ```bash
-# Backup existing database first
-cp -r ./data ./data-backup-$(date +%Y%m%d)
+# Backup production database
+cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
 
-# Recreate tables with new schema
-python recreate_db.py
+# Or use backup script
+./backup_db.sh
 ```
 
-This will:
-1. Drop all existing tables (Weighing, Canister, CanisterType)
-2. Create tables with new schema (UUID primary keys)
-3. Seed canister types (Coleman 240g, Coleman 450g)
-4. Result: Fresh database with no data
+**Reset Database:**
+To start fresh, simply delete the database file - it will be recreated on next run:
+```bash
+rm data/gas_gauge.db  # Local development
+# or
+rm ~/code/container_data/gas_gauge.db  # Docker deployment
+```
+
+On next startup:
+1. Tables will be created automatically
+2. Seed data (Coleman 240g) will be populated
 
 ## Key Design Decisions
 
@@ -266,10 +303,12 @@ This will:
 5. **Vanilla JS**: No build step, keep frontend simple; client-side toggle for show/hide
 6. **TomSelect for dropdowns**: Better UX than plain select elements
 7. **Flatpickr for date picker**: Consistent YYYY-MM-DD format display across all browsers/locales
-8. **Chart.js**: Visualize trends without heavy dependencies
-9. **UUID-based IDs**: Robust unique identifiers combining UUID + timestamp for canister labels
+8. **Chart.js**: Pie charts showing gas consumption breakdown
+9. **UUID-based IDs**: Robust unique identifiers combining UUID + timestamp
 10. **Unified logging**: Consistent format across uvicorn and application logs for easier debugging
-11. **Date format consistency**: All dates use ISO 8601 format (YYYY-MM-DD) across GUI, database, logs, and APIs; Flatpickr ensures consistent date picker display
+11. **Date format consistency**: All dates use ISO 8601 format (YYYY-MM-DD) across GUI, database, logs, and APIs
+12. **Mobile responsive**: Buttons stack with spacing, tables scroll horizontally, flexible layouts
+13. **CheatSheets**: Printable reference for field use when app access unavailable
 
 ## Worktree Configuration
 

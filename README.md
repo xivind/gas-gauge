@@ -7,14 +7,21 @@ A web application to track remaining gas in canisters for camp stoves.
 ## Features
 
 - **Dashboard**: View all active canisters with remaining gas percentages
+- **Show Depleted Toggle**: Hide/show depleted canisters with client-side toggle
 - **Weighing History**: Track multiple weighings per canister over time
-- **Visual Analytics**: Charts showing gas consumption trends
-- **Archive**: Keep history of depleted canisters
+- **Visual Analytics**: Pie charts showing gas consumption breakdown by trip
+- **CheatSheets**: Generate printable reference tables showing weight-to-percentage mappings for field use
+- **Archive**: Soft delete with "depleted" status preserves history
+- **Hard Delete**: Optional cascade deletion of canisters and all weighing records
 - **Custom Types**: Add your own canister types
+- **Protected Types**: Built-in types (Coleman 240g) cannot be deleted
+- **UUID-based IDs**: Unique canister identifiers combining UUID + timestamp
 - **Color-coded Status**: Quick visual identification of canister levels
   - Green: >50% remaining
   - Yellow: 25-50% remaining
   - Red: <25% remaining
+  - Purple: Depleted
+  - Gray: No measurements yet
 
 ## Quick Start
 
@@ -24,7 +31,7 @@ The easiest way to deploy is using the provided `deploy.sh` script:
 
 1. **Deploy (first time or updates):**
    ```bash
-   ./deploy.sh
+   ./create-container-gasgauge.sh
    ```
 
    This script will:
@@ -35,7 +42,7 @@ The easiest way to deploy is using the provided `deploy.sh` script:
    - Database persists in `~/code/container_data`
 
 2. **Open your browser:**
-   Navigate to `http://localhost:8000`
+   Navigate to `http://localhost:8003`
 
 ### Manual Docker Commands
 
@@ -54,7 +61,7 @@ If you prefer manual control:
      -e TZ=Europe/Stockholm \
      -v ~/code/container_data:/app/data \
      --restart unless-stopped \
-     -p 8000:8000 \
+     -p 8003:8003 \
      gas-gauge
    ```
 
@@ -94,29 +101,44 @@ cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
 
 2. **Run the app:**
    ```bash
-   uvicorn main:app --reload
+   # Development with hot reload
+   uvicorn main:app --reload --log-config uvicorn_log_config.ini
+
+   # Production
+   uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
    ```
 
-3. **Run tests:**
-   ```bash
-   pytest
-   ```
+3. **Access the app:**
+   Navigate to `http://localhost:8003`
 
 ### Project Structure
 
 ```
 gas-gauge/
-├── main.py              # FastAPI app initialization
-├── models.py            # Database models
-├── database.py          # Database connection
-├── schemas.py           # Pydantic schemas
-├── seed_data.py         # Seed predefined canister types
-├── logger.py            # Logging configuration
-├── routers/             # API and view routes
-├── templates/           # Jinja2 templates
-├── static/              # CSS and JavaScript
-├── tests/               # Test suite
-└── data/                # SQLite database (created at runtime)
+├── main.py                       # FastAPI app with all routes (13 endpoints)
+├── business_logic.py             # Business calculations and orchestration
+├── database_manager.py           # All database CRUD operations
+├── database_model.py             # Peewee ORM models (3 tables)
+├── utils.py                      # Utility functions (UUID generation)
+├── logger.py                     # Logging configuration
+├── seed_data.py                  # Seed predefined canister types
+├── templates/                    # Jinja2 templates
+│   ├── base.html                # Base template with navbar
+│   ├── dashboard.html           # Main dashboard
+│   ├── canister_detail.html     # Individual canister view
+│   └── types.html               # Canister types management
+├── static/                       # Static assets
+│   ├── css/custom.css           # Custom styling
+│   ├── js/app.js                # JavaScript utilities
+│   ├── gas_gauge.png            # Logo (1024x1024)
+│   └── favicon.ico              # Browser favicon
+├── data/                         # SQLite database (created at runtime)
+├── Dockerfile                    # Docker image definition
+├── create-container-gasgauge.sh # Main deployment script
+├── deploy.sh                     # Deployment wrapper
+├── backup_db.sh                  # Database backup script
+├── uvicorn_log_config.ini       # Logging configuration
+└── requirements.txt              # Python dependencies
 ```
 
 ## Usage Guide
