@@ -1,6 +1,6 @@
 # Gas Gauge
 
-A web application to track remaining gas in canisters for camp stoves.
+A simple self hosted web application to track remaining gas in canisters for camp stoves.
 
 ![Gas Gauge Logo](static/gas_gauge.png)
 
@@ -27,7 +27,7 @@ A web application to track remaining gas in canisters for camp stoves.
 
 ### Using Docker (Recommended)
 
-The easiest way to deploy is using the provided `deploy.sh` script:
+The easiest way to deploy is using the provided deploy script:
 
 1. **Deploy (first time or updates):**
    ```bash
@@ -41,57 +41,6 @@ The easiest way to deploy is using the provided `deploy.sh` script:
    - Create container with data persistence
    - Database persists in `~/code/container_data`
 
-2. **Open your browser:**
-   Navigate to `http://localhost:8003`
-
-### Manual Docker Commands
-
-If you prefer manual control:
-
-1. **Build the image:**
-   ```bash
-   docker build -t gas-gauge .
-   ```
-
-2. **Run the container:**
-   ```bash
-   mkdir -p ~/code/container_data
-   docker run -d \
-     --name=gas-gauge \
-     -e TZ=Europe/Stockholm \
-     -v ~/code/container_data:/app/data \
-     --restart unless-stopped \
-     -p 8003:8003 \
-     gas-gauge
-   ```
-
-### View Logs
-
-```bash
-docker logs -f gas-gauge
-# or
-docker container logs -f gas-gauge
-```
-
-### Stop/Start
-
-```bash
-docker stop gas-gauge
-docker start gas-gauge
-```
-
-## Database Persistence
-
-Your database is stored in `~/code/container_data/gas_gauge.db` and persists across container rebuilds.
-
-### Backup
-
-```bash
-cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
-```
-
-## Development
-
 ### Local Setup (without Docker)
 
 1. **Install dependencies:**
@@ -101,44 +50,41 @@ cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
 
 2. **Run the app:**
    ```bash
-   # Development with hot reload
-   uvicorn main:app --reload --log-config uvicorn_log_config.ini
-
-   # Production
    uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
    ```
 
-3. **Access the app:**
-   Navigate to `http://localhost:8003`
+### Database Persistence
+
+The database is stored in `~/code/container_data/gas_gauge.db` and persists across container rebuilds.
 
 ### Project Structure
 
 ```
 gas-gauge/
-├── main.py                       # FastAPI app with all routes (13 endpoints)
-├── business_logic.py             # Business calculations and orchestration
-├── database_manager.py           # All database CRUD operations
-├── database_model.py             # Peewee ORM models (3 tables)
-├── utils.py                      # Utility functions (UUID generation)
-├── logger.py                     # Logging configuration
-├── seed_data.py                  # Seed predefined canister types
-├── templates/                    # Jinja2 templates
-│   ├── base.html                # Base template with navbar
-│   ├── dashboard.html           # Main dashboard
-│   ├── canister_detail.html     # Individual canister view
-│   └── types.html               # Canister types management
-├── static/                       # Static assets
-│   ├── css/custom.css           # Custom styling
-│   ├── js/app.js                # JavaScript utilities
-│   ├── gas_gauge.png            # Logo (1024x1024)
-│   └── favicon.ico              # Browser favicon
-├── data/                         # SQLite database (created at runtime)
-├── Dockerfile                    # Docker image definition
-├── create-container-gasgauge.sh # Main deployment script
-├── deploy.sh                     # Deployment wrapper
-├── backup_db.sh                  # Database backup script
-├── uvicorn_log_config.ini       # Logging configuration
-└── requirements.txt              # Python dependencies
+├── main.py                         # FastAPI app with all routes (13 endpoints)
+├── business_logic.py               # Business calculations and orchestration
+├── database_manager.py             # All database CRUD operations
+├── database_model.py               # Peewee ORM models (3 tables)
+├── utils.py                        # Utility functions (UUID generation)
+├── logger.py                       # Logging configuration
+├── seed_data.py                    # Seed predefined canister types
+├── templates/                      # Jinja2 templates
+│   ├── base.html                   # Base template with navbar
+│   ├── dashboard.html              # Main dashboard
+│   ├── canister_detail.html        # Individual canister view
+│   └── types.html                  # Canister types management
+├── static/                         # Static assets
+│   ├── css/custom.css              # Custom styling
+│   ├── js/app.js                   # JavaScript utilities
+│   ├── gas_gauge.png               # Logo (1024x1024)
+│   └── favicon.ico                 # Browser favicon
+├── data/                           # SQLite database (created at runtime)
+├── Dockerfile                      # Docker image definition
+├── create-container-gasgauge.sh    # Main deployment script
+├── create-container-gasgauge.sh    # Deployment wrapper
+├── backup_db.sh                    # Database backup script
+├── uvicorn_log_config.ini          # Logging configuration
+└── requirements.txt                # Python dependencies
 ```
 
 ## Usage Guide

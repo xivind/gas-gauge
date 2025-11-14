@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. Claude must always read this file.
 
 ## Project Overview
 
@@ -66,22 +66,6 @@ uvicorn main:app --reload --log-config uvicorn_log_config.ini
 
 # Run for production
 uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
-```
-
-### Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run with verbose output
-pytest -v
-
-# Run specific test file
-pytest tests/test_models.py -v
-
-# Run with coverage
-pytest --cov=. --cov-report=html
 ```
 
 ## Architecture
@@ -236,19 +220,6 @@ Canisters use UUID-based strings as primary keys instead of auto-incrementing in
 - `templates/dashboard.html`: Form with label field (suggested value)
 - `templates/canister_detail.html`: Label edit form
 
-### UI/UX Improvements
-
-**Navbar:**
-- Dark theme with large transparent logo (70px height)
-- Vertically centered logo and navigation links
-- Increased font size for better readability (1.1rem)
-- Logo and favicon use transparent PNG and ICO files
-
-**Consistency:**
-- All "Back to Dashboard" buttons use same styling (btn btn-secondary)
-- Color-coded status indicators throughout (green/yellow/red)
-- Standardized form layouts and button positions
-
 ## Database Management
 
 ### Location
@@ -259,7 +230,7 @@ Canisters use UUID-based strings as primary keys instead of auto-incrementing in
 
 ### Initialization
 - Tables created automatically on first run
-- Seed data (Coleman 240g) populated by `seed_data.py`
+- Seed data populated by `seed_data.py`
 - Protected types cannot be deleted through UI
 
 ### Backup
@@ -269,17 +240,6 @@ cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
 
 # Development database
 cp -r ./data ./data-backup-$(date +%Y%m%d)
-```
-
-### Database Management
-
-**Backup:**
-```bash
-# Backup production database
-cp -r ~/code/container_data ~/code/container_data-backup-$(date +%Y%m%d)
-
-# Or use backup script
-./backup_db.sh
 ```
 
 **Reset Database:**
