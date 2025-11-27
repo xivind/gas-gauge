@@ -33,9 +33,7 @@ class BusinessLogic:
         percentage = (remaining_gas / gas_capacity) * 100
         return max(0, min(percentage, 100))
 
-    def calculate_consumption_percentage(self, remaining_percentage):
-        """Calculate consumption percentage"""
-        return 100 - remaining_percentage
+
 
     def get_status_class(self, percentage):
         """Get CSS class for percentage-based status"""
@@ -110,6 +108,8 @@ class BusinessLogic:
 
         # Enrich weighings with calculations
         weighings = []
+        # First pass: Calculate basic metrics
+        temp_weighings = []
         for w in weighings_raw:
             gas_capacity = self.calculate_gas_capacity(
                 canister_type.full_weight,
@@ -121,17 +121,29 @@ class BusinessLogic:
                 canister_type.empty_weight,
                 gas_capacity
             )
-            consumption_percentage = self.calculate_consumption_percentage(remaining_percentage)
-
-            weighings.append({
+            
+            temp_weighings.append({
                 "id": w.id,
                 "weight": w.weight,
                 "comment": w.comment,
                 "recorded_at": w.recorded_at,
                 "remaining_gas": remaining_gas,
-                "remaining_percentage": remaining_percentage,
-                "consumption_percentage": consumption_percentage
+                "remaining_percentage": remaining_percentage
             })
+
+        # Second pass: Calculate consumption relative to previous record
+        # Note: temp_weighings is ordered newest to oldest
+        for i, w in enumerate(temp_weighings):
+            if i < len(temp_weighings) - 1:
+                # Not the oldest record - compare with the next one (which is older)
+                previous_remaining = temp_weighings[i+1]["remaining_percentage"]
+                consumption_percentage = previous_remaining - w["remaining_percentage"]
+            else:
+                # Oldest record - compare with full (100%)
+                consumption_percentage = 100 - w["remaining_percentage"]
+
+            w["consumption_percentage"] = consumption_percentage
+            weighings.append(w)
 
         latest_weighing = weighings[0] if weighings else None
         status_class = self.get_status_class(
