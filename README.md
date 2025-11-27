@@ -1,9 +1,7 @@
 # Gas Gauge
 
 A simple self hosted web application to track remaining gas in canisters for camp stoves.
-
 ![Gas Gauge Logo](static/gas_gauge.png)
-
 ## Features
 
 - **Dashboard**: View all active canisters with remaining gas percentages
