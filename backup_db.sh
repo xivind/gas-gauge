@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to backup database for Velo Supervisor 2000
+# Script to backup database for Gas Gauge
 
 set -o xtrace
 
