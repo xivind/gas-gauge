@@ -9,8 +9,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY . .
 
-# Create data directory
-RUN mkdir -p /app/data
+# Create data and logs directories
+RUN mkdir -p /app/data/logs
 
 # Expose port
 EXPOSE 8003

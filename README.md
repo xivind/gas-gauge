@@ -51,9 +51,76 @@ The easiest way to deploy is using the provided deploy script:
    uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
    ```
 
-### Database Persistence
+## Data Persistence
 
-The database is stored in `~/code/container_data/gas_gauge.db` and persists across container rebuilds.
+- **Database location**: `~/code/container_data/gas_gauge.db` (both Docker and local development)
+- Automatically created on first run with directory creation
+- Survives container restarts and rebuilds
+- Seed data added automatically if database is new (Coleman 240g canister type)
+- Can be overridden with `DATABASE_PATH` environment variable
+
+## Logging
+
+- Logs are written to **both stdout and file**
+- Log format: `YYYY-MM-DD HH:MM:SS - LEVEL - MESSAGE`
+- Includes uvicorn, access, and application logs
+- **File location**: `~/code/container_data/logs/gas_gauge.log` (persisted on host)
+- **Log rotation**: Application-level RotatingFileHandler (max 3 files × 10KB each)
+
+To view logs:
+```bash
+# Docker logs (stdout)
+docker logs gas-gauge
+docker logs -f gas-gauge  # Follow in real-time
+
+# Log file (persisted)
+tail -f ~/code/container_data/logs/gas_gauge.log
+cat ~/code/container_data/logs/gas_gauge.log
+
+# Backup log files (rotated)
+ls -lh ~/code/container_data/logs/
+```
+
+For local development, logs appear in both the console and `~/code/container_data/logs/gas_gauge.log`.
+
+## Backup
+
+Use the provided backup script:
+```bash
+./backup_db.sh
+```
+
+Or manually backup your data:
+```bash
+cp ~/code/container_data/gas_gauge.db ~/backup/gas_gauge_$(date +%Y%m%d).db
+```
+
+To restore from backup:
+```bash
+docker stop gas-gauge
+cp ~/backup/gas_gauge_20250115.db ~/code/container_data/gas_gauge.db
+docker start gas-gauge
+```
+
+## Useful Docker Commands
+
+```bash
+# View logs
+docker logs gas-gauge
+docker logs -f gas-gauge  # Follow in real-time
+
+# Stop the container
+docker stop gas-gauge
+
+# Start the container
+docker start gas-gauge
+
+# Restart the container
+docker restart gas-gauge
+
+# Remove the container (data persists in ~/code/container_data)
+docker rm gas-gauge
+```
 
 ### Project Structure
 
@@ -64,7 +131,6 @@ gas-gauge/
 ├── database_manager.py             # All database CRUD operations
 ├── database_model.py               # Peewee ORM models (3 tables)
 ├── utils.py                        # Utility functions (UUID generation)
-├── logger.py                       # Logging configuration
 ├── seed_data.py                    # Seed predefined canister types
 ├── templates/                      # Jinja2 templates
 │   ├── base.html                   # Base template with navbar

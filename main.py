@@ -7,13 +7,12 @@ from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from logger import setup_logging
 from business_logic import BusinessLogic
 from seed_data import seed_canister_types
 import logging
 
 # Setup logging
-logger = setup_logging()
+logger = logging.getLogger(__name__)
 
 # Initialize app
 app = FastAPI(title="Gas Gauge")
