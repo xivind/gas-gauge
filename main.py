@@ -21,32 +21,16 @@ app = FastAPI(title="Gas Gauge")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Initialize database and seed data
-logger.info("Initializing database...")
+# Initialize business logic
 business_logic = BusinessLogic()
-business_logic.db_manager.init_db()
-seed_canister_types()
-logger.info("Database initialized")
 
-def health_check():
-    """Test database connectivity and write healthcheck status"""
-    try:
-        # Test database connectivity with a simple query
-        from database_model import CanisterType
-        CanisterType.select().limit(1).execute()
-        with open("status.txt", "w", encoding='utf-8') as file:
-            file.write("ok")
-        logger.info("Health check passed")
-        return True
-    except Exception as error:
-        logger.error(f"Health check failed: {error}")
-        with open("status.txt", "w", encoding='utf-8') as file:
-            file.write("error")
-        return False
-
-# Perform startup health check
-logger.info("Performing startup health check...")
-health_check()
+@app.on_event("startup")
+def startup_event():
+    """Initialize database on startup."""
+    logger.info("Initializing database...")
+    business_logic.db_manager.init_db()
+    seed_canister_types()
+    logger.info("Database initialized")
 
 # ==================== HTML VIEWS ====================
 

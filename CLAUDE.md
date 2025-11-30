@@ -61,10 +61,15 @@ docker start gas-gauge
 # Install dependencies
 pip install -r requirements.txt
 
-# Run with hot reload
-uvicorn main:app --reload --log-config uvicorn_log_config.ini
+# Development with hot reload (detects code changes automatically)
+# Note: You may see "1 change detected" messages due to log files being written.
+# This is harmless - uvicorn detects the changes but doesn't actually reload.
+uvicorn main:app --host 0.0.0.0 --port 8003 --reload --log-config uvicorn_log_config.ini
 
-# Run for production
+# Development without hot reload (clean console output, manual restart needed)
+uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
+
+# Production (same as above, no reload)
 uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
 ```
 
