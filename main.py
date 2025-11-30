@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from business_logic import BusinessLogic
 from seed_data import seed_canister_types
+from utils import empty_to_none
 import logging
 
 # Setup logging
@@ -91,6 +92,9 @@ def add_weighing_form(
     comment: str = Form(None)
 ):
     """Add weighing from form"""
+    # Convert empty comment to None
+    comment = empty_to_none(comment)
+
     success, message = business_logic.create_weighing(
         canister_id, weight, recorded_at, comment
     )
