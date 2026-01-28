@@ -5,7 +5,7 @@ set -o xtrace
 
 docker container stop gas-gauge
 sleep 5
-rm -vf /home/pi/backup/gas_gauge.db
-cp /home/pi/code/container_data/gas_gauge.db /home/pi/backup/gas_gauge.db
+rm -vf /home/pi/dataspace/backup/gas_gauge.db
+cp /home/pi/code/container_data/gas_gauge.db /home/pi/dataspace/backup/gas_gauge.db
 docker container start gas-gauge
 
