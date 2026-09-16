@@ -43,20 +43,20 @@ The easiest way to deploy is using the provided deploy script:
 
 1. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
 2. **Run the app:**
 
    **With hot reload (detects code changes automatically):**
    ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8003 --reload --log-config uvicorn_log_config.ini
+   uv run uvicorn main:app --host 0.0.0.0 --port 8003 --reload --log-config uvicorn_log_config.ini
    ```
    Note: You may see "1 change detected" messages due to log files being written. This is harmless - uvicorn detects the changes but doesn't actually reload.
 
    **Without hot reload (clean console, manual restart needed):**
    ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
+   uv run uvicorn main:app --host 0.0.0.0 --port 8003 --log-config uvicorn_log_config.ini
    ```
 
 ## Data Persistence
@@ -195,6 +195,7 @@ gas-gauge/
 - **Frontend:** Bootstrap 5, Chart.js, TomSelect, Vanilla JavaScript
 - **Templates:** Jinja2
 - **Deployment:** Docker
+- **Package management:** uv (not pip)
 
 ## License
 
