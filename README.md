@@ -156,7 +156,8 @@ gas-gauge/
 ├── create-container-gasgauge.sh    # Deployment wrapper
 ├── backup_db.sh                    # Database backup script
 ├── uvicorn_log_config.ini          # Logging configuration
-└── requirements.txt                # Python dependencies
+├── pyproject.toml                  # Python dependencies
+└── uv.lock                         # Locked dependency versions
 ```
 
 ## Usage Guide

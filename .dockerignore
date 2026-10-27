@@ -13,3 +13,4 @@ data/
 *.md
 tests/
 .worktrees/
+.venv/
